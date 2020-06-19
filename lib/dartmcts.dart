@@ -21,7 +21,7 @@ class Node<MoveType, PlayerType> {
   final MoveType move;
   int visits;
   final int depth;
-  final Map<PlayerType, int> winsByPlayer;
+  final Map<PlayerType, int> winsByPlayer = {};
   int draws;
   final GameState initialState;
   bool needStateReset = false;
@@ -33,9 +33,8 @@ class Node<MoveType, PlayerType> {
       this.parent,
       this.move,
       this.visits = 0,
-      this.depth,
-      this.winsByPlayer,
-      this.draws,
+      this.depth = 0,
+      this.draws = 0,
       this.c})
       : initialState = gameState;
 
@@ -71,7 +70,8 @@ class Node<MoveType, PlayerType> {
     }
     var moves = gameState.getMoves();
     addNewChildrenForDetermination(moves);
-    return Map.fromEntries(_children.entries.where((x) => x.key == move));
+    return Map.fromEntries(
+        _children.entries.where((x) => moves.contains(x.value.move)));
   }
 
   double ucb1(PlayerType player) {
@@ -95,23 +95,23 @@ class Node<MoveType, PlayerType> {
       return null;
     }
 
-    var sortedChildren = children.entries
-      ..toList().sort((a, b) {
-        var aVisits = a.value.visits;
-        var bVisits = b.value.visits;
-        if (aVisits == 0 && bVisits == 0) {
-          return random.nextInt(100).compareTo(random.nextInt(100));
-        }
-        if (aVisits == 0) {
-          return -1;
-        }
-        if (bVisits == 0) {
-          return 1;
-        }
-        return -a.value
-            .ucb1(currentPlayer())
-            .compareTo(-b.value.ucb1(currentPlayer()));
-      });
+    var sortedChildren = children.entries.toList();
+    sortedChildren.sort((a, b) {
+      var aVisits = a.value.visits;
+      var bVisits = b.value.visits;
+      if (aVisits == 0 && bVisits == 0) {
+        return random.nextInt(100).compareTo(random.nextInt(100));
+      }
+      if (aVisits == 0) {
+        return -1;
+      }
+      if (bVisits == 0) {
+        return 1;
+      }
+      return b.value
+          .ucb1(currentPlayer())
+          .compareTo(a.value.ucb1(currentPlayer()));
+    });
     return sortedChildren.first.value;
   }
 
@@ -136,12 +136,11 @@ class Node<MoveType, PlayerType> {
     var currentChildren = children;
     if (actualMoves != null) {
       addNewChildrenForDetermination(actualMoves);
-      currentChildren =
-          Map.fromEntries(_children.entries.where((x) => x.key == move));
+      currentChildren = Map.fromEntries(
+          _children.entries.where((x) => actualMoves.contains(x.value.move)));
     }
-    var sortedChildren = currentChildren.entries
-      ..toList().sort((a, b) => a.value.visits.compareTo(b.value.visits))
-      ..first.value;
+    var sortedChildren = currentChildren.entries.toList();
+    sortedChildren.sort((b, a) => a.value.visits.compareTo(b.value.visits));
     return sortedChildren.first.value;
   }
 }
@@ -158,9 +157,11 @@ class MCTSResult<MoveType, PlayerType> {
 class MCTS<MoveType, PlayerType> {
   GameState<MoveType, PlayerType> gameState;
   double c = 1.41421356237;
+
+  MCTS({this.gameState});
   MCTSResult<MoveType, PlayerType> getSimulationResult(
-      Node<MoveType, PlayerType> initialRootNode,
-      {int iterations = 100,
+      {Node<MoveType, PlayerType> initialRootNode,
+      int iterations = 100,
       double maxSeconds,
       List<MoveType> actualMoves}) {
     var rootNode = initialRootNode;
