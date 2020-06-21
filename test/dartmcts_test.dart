@@ -46,10 +46,16 @@ class TicTacToeGame implements GameState<int, TicTacToePlayer> {
   TicTacToePlayer winner;
   TicTacToeGame({this.board, this.currentPlayer, this.winner});
 
+  static GameState<int, TicTacToePlayer> newGame() {
+    return TicTacToeGame(
+        board: List.from([null, null, null, null, null, null, null, null, null]),
+        currentPlayer: TicTacToePlayer.O);
+  }
+
   @override
   GameState<int, TicTacToePlayer> determine(
       GameState<int, TicTacToePlayer> initialState) {
-    return this;
+    return initialState;
   }
 
   @override
@@ -84,7 +90,7 @@ class TicTacToeGame implements GameState<int, TicTacToePlayer> {
       TicTacToePlayer.O: 0,
       TicTacToePlayer.X: 0
     };
-    board.asMap().forEach((index, player) => {
+    newBoard.asMap().forEach((index, player) => {
           if (player != null)
             {scoreByPlayer[player] += pow(2.0, index.toDouble()).toInt()}
         });
@@ -131,6 +137,20 @@ void main() {
     expect(result.root.children.length, equals(4));
     expect(result.maxDepth, equals(4));
     expect(result.move, equals(6));
+  });
+
+  test('test', () {
+    int gamesPlayed = 0;
+    for (var _ = 0; _ < 1000; _++) {
+      TicTacToeGame gameState = TicTacToeGame.newGame();
+      while (gameState.getMoves().length > 0) {
+        var result =
+            MCTS(gameState: gameState).getSimulationResult(iterations: 100);
+        gameState = gameState.cloneAndApplyMove(result.move);
+      }
+      gamesPlayed += 1;
+    }
+    print(gamesPlayed);
   });
 }
 

@@ -91,10 +91,6 @@ class Node<MoveType, PlayerType> {
   }
 
   Node<MoveType, PlayerType> getBestChild() {
-    if (children.isEmpty) {
-      return null;
-    }
-
     var sortedChildren = children.entries.toList();
     sortedChildren.sort((a, b) {
       var aVisits = a.value.visits;
@@ -187,16 +183,12 @@ class MCTS<MoveType, PlayerType> {
       }
       plays += 1;
       var currentNode = rootNode;
-      while (currentNode != null &&
-          currentNode.children.length > 0 &&
-          currentNode.getBestChild() != null) {
+      while (currentNode.children.length > 0) {
         currentNode = currentNode.getBestChild();
         currentNode.resetState();
       }
-      if (currentNode != null) {
-        currentNode.backProp();
-        maxDepth = max(maxDepth, currentNode.depth);
-      }
+      currentNode.backProp();
+      maxDepth = max(maxDepth, currentNode.depth);
     }
 
     var selectedMove = rootNode.getMostVisitedChild(actualMoves).move;
