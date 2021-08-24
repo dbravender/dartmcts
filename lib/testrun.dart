@@ -6,30 +6,36 @@ enum TicTacToePlayer { X, O }
 
 final Set<int> winningTicTacToeScores = {7, 56, 448, 73, 146, 292, 273, 84};
 
-class TicTacToeGame implements GameState<int, TicTacToePlayer> {
-  List<TicTacToePlayer> board;
-  TicTacToePlayer currentPlayer;
-  TicTacToePlayer winner;
-  TicTacToeGame({this.board, this.currentPlayer, this.winner});
+class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
+  List<TicTacToePlayer?> board =
+      List.from([null, null, null, null, null, null, null, null, null]);
+  TicTacToePlayer? currentPlayer;
+  TicTacToePlayer? winner;
+  Map<TicTacToePlayer, int> scores = {
+    TicTacToePlayer.O: 0,
+    TicTacToePlayer.X: 0
+  };
+  TicTacToeGame({required this.board, this.currentPlayer, this.winner});
 
   String toString() {
     return this.board.toString();
   }
 
-  static GameState<int, TicTacToePlayer> newGame() {
+  static GameState<int?, TicTacToePlayer> newGame() {
     return TicTacToeGame(
-        board: List.from([null, null, null, null, null, null, null, null, null]),
+        board:
+            List.from([null, null, null, null, null, null, null, null, null]),
         currentPlayer: TicTacToePlayer.O);
   }
 
   @override
-  GameState<int, TicTacToePlayer> determine(
-      GameState<int, TicTacToePlayer> initialState) {
+  GameState<int?, TicTacToePlayer> determine(
+      GameState<int?, TicTacToePlayer>? initialState) {
     return this;
   }
 
   @override
-  List<int> getMoves() {
+  List<int?> getMoves() {
     if (winner == null) {
       return board
           .asMap()
@@ -43,7 +49,7 @@ class TicTacToeGame implements GameState<int, TicTacToePlayer> {
   }
 
   @override
-  TicTacToeGame cloneAndApplyMove(int move) {
+  TicTacToeGame cloneAndApplyMove(int? move) {
     if (move == null) {
       return this;
     }
@@ -53,8 +59,8 @@ class TicTacToeGame implements GameState<int, TicTacToePlayer> {
     TicTacToePlayer newCurrentPlayer = currentPlayer == TicTacToePlayer.O
         ? TicTacToePlayer.X
         : TicTacToePlayer.O;
-    TicTacToePlayer newWinner;
-    List<TicTacToePlayer> newBoard = List.from(board);
+    TicTacToePlayer? newWinner;
+    List<TicTacToePlayer?> newBoard = List.from(board);
     newBoard[move] = currentPlayer;
     Map<TicTacToePlayer, int> scoreByPlayer = {
       TicTacToePlayer.O: 0,
@@ -62,7 +68,11 @@ class TicTacToeGame implements GameState<int, TicTacToePlayer> {
     };
     board.asMap().forEach((index, player) => {
           if (player != null)
-            {scoreByPlayer[player] += pow(2.0, index.toDouble()).toInt()}
+            {
+              scoreByPlayer.update(
+                  player, (score) => score + pow(2.0, index.toDouble()).toInt(),
+                  ifAbsent: () => pow(2.0, index.toDouble()).toInt())
+            }
         });
 
     for (var player in scoreByPlayer.keys) {
@@ -81,11 +91,11 @@ class TicTacToeGame implements GameState<int, TicTacToePlayer> {
 void main() {
   int gamesPlayed = 0;
   for (var _ = 0; _ < 100; _++) {
-    TicTacToeGame gameState = TicTacToeGame.newGame();
+    TicTacToeGame gameState = TicTacToeGame.newGame() as TicTacToeGame;
     while (gameState.getMoves().length > 0) {
-      var result =
+      MCTSResult<int?, TicTacToePlayer> result =
           MCTS(gameState: gameState).getSimulationResult(iterations: 100);
-      var boardBefore = gameState.board;
+      //var boardBefore = gameState.board;
       gameState = gameState.cloneAndApplyMove(result.move);
       //print('before: $boardBefore after: ${gameState.board}');
     }
