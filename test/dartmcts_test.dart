@@ -1,8 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dartmcts/dartmcts.dart';
+import 'package:dartmcts/tictactoe.dart';
 
 enum Player { FIRST, SECOND }
 
@@ -37,93 +36,6 @@ class GameWithOneMove implements GameState<Move, Player> {
   @override
   GameState<Move, Player> determine(GameState<Move, Player>? initialState) {
     return this;
-  }
-}
-
-enum TicTacToePlayer { X, O }
-
-final Set<int> winningTicTacToeScores = {7, 56, 448, 73, 146, 292, 273, 84};
-
-class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
-  List<TicTacToePlayer?>? board = [];
-  TicTacToePlayer? currentPlayer;
-  TicTacToePlayer? winner;
-  Map<TicTacToePlayer, int> scores = {
-    TicTacToePlayer.O: 0,
-    TicTacToePlayer.X: 0,
-  };
-  TicTacToeGame(
-      {this.board, required this.scores, this.currentPlayer, this.winner});
-
-  static GameState<int?, TicTacToePlayer> newGame() {
-    return TicTacToeGame(
-        board:
-            List.from([null, null, null, null, null, null, null, null, null]),
-        currentPlayer: TicTacToePlayer.O,
-        scores: {
-          TicTacToePlayer.O: 0,
-          TicTacToePlayer.X: 0,
-        });
-  }
-
-  @override
-  GameState<int?, TicTacToePlayer>? determine(
-      GameState<int?, TicTacToePlayer>? initialState) {
-    return initialState;
-  }
-
-  @override
-  List<int?> getMoves() {
-    if (winner == null) {
-      return board!
-          .asMap()
-          .map((index, player) =>
-              player == null ? MapEntry(index, null) : MapEntry(null, null))
-          .keys
-          .where((index) => index != null)
-          .toList();
-    }
-    return [];
-  }
-
-  @override
-  TicTacToeGame cloneAndApplyMove(int? move) {
-    if (move == null) {
-      return this;
-    }
-    var newScores = new Map<TicTacToePlayer, int>.from(scores);
-    if (board![move] != null) {
-      throw InvalidMove();
-    }
-    TicTacToePlayer newCurrentPlayer = currentPlayer == TicTacToePlayer.O
-        ? TicTacToePlayer.X
-        : TicTacToePlayer.O;
-    TicTacToePlayer? newWinner;
-    List<TicTacToePlayer?> newBoard = List.from(board!);
-    newBoard[move] = currentPlayer;
-    Map<TicTacToePlayer, int> scoreByPlayer = {
-      TicTacToePlayer.O: 0,
-      TicTacToePlayer.X: 0
-    };
-    newBoard.asMap().forEach((index, player) {
-      if (player != null) {
-        int addScore = pow(2.0, index.toDouble()).toInt();
-        scoreByPlayer.update(player, (score) => score + addScore,
-            ifAbsent: () => addScore);
-      }
-    });
-
-    for (var player in scoreByPlayer.keys) {
-      if (winningTicTacToeScores.contains(scoreByPlayer[player])) {
-        newWinner = player;
-        newScores[player] = 1;
-      }
-    }
-    return TicTacToeGame(
-        board: newBoard,
-        winner: newWinner,
-        scores: newScores,
-        currentPlayer: newCurrentPlayer);
   }
 }
 

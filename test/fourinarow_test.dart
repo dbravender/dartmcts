@@ -110,10 +110,6 @@ void main() {
             MCTS(gameState: game).getSimulationResult(iterations: iterations);
         game = game.cloneAndApplyMove(result.move!);
       }
-      if (_ == 99) {
-        print(game.board);
-        print(game.winner);
-      }
       if (game.winner == Player.SECOND) {
         smartWins++;
       }

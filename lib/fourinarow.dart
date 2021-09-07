@@ -109,9 +109,16 @@ class ConnectFourGame implements GameState<Move, Player> {
     newBitboards.forEach((player, bitboard) {
       if (checkWin(bitboard)) {
         newWinner = player;
-        newScores[player] = 1;
+        newScores[player] = 10;
       }
     });
+
+    if (getMoves().length == 0 && winner == null) {
+      newScores = {
+        Player.FIRST: 5,
+        Player.SECOND: 5,
+      };
+    }
 
     if (currentPlayer == Player.FIRST) {
       newPlayer = Player.SECOND;
