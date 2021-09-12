@@ -78,8 +78,12 @@ class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
           newBoard[check[0]] == newBoard[check[1]] &&
           newBoard[check[1]] == newBoard[check[2]]) {
         newWinner = newBoard[check[0]];
-        newScores[newBoard[check[0]]!] = 1;
+        newScores[newBoard[check[0]]!] = 10;
       }
+    }
+    if (getMoves().length == 0 && newWinner == null) {
+      newScores[TicTacToePlayer.X] = 5;
+      newScores[TicTacToePlayer.O] = 5;
     }
     return TicTacToeGame(
         board: newBoard,
