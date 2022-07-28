@@ -166,6 +166,8 @@ void main() {
     expect(result.root!.children.length, equals(3));
     expect(result.move, equals(ScoringMove.SCORE_100));
     expect(result.root!.children[ScoringMove.SCORE_100]?.visits ?? 0,
-        greaterThan(50));
+        greaterThan(result.root!.children[ScoringMove.SCORE_5]?.visits ?? 0));
+    expect(result.root!.children[ScoringMove.SCORE_100]?.visits ?? 0,
+        greaterThan(result.root!.children[ScoringMove.SCORE_10]?.visits ?? 0));
   });
 }
