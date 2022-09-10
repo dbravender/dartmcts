@@ -124,7 +124,14 @@ class Node<MoveType, PlayerType> {
           .ucb1(player, maxScore)
           .compareTo(a.value.ucb1(player, maxScore));
     });
-    return sortedChildren.first.value;
+    List<MapEntry<MoveType?, Node<MoveType, PlayerType?>>> tiedChildren = [];
+    for (var x in sortedChildren) {
+      if (x.value.visits == sortedChildren.first.value.visits) {
+        tiedChildren.add(x);
+      }
+    }
+    tiedChildren.shuffle();
+    return tiedChildren.first.value;
   }
 
   backProp() {
