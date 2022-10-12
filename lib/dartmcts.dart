@@ -213,7 +213,8 @@ class MCTS<MoveType, PlayerType> {
       }
       plays += 1;
       Node<MoveType, PlayerType?> currentNode = rootNode;
-      while (currentNode.children.length > 0) {
+      while (currentNode.children.length > 0 &&
+          currentNode.gameState?.winner == null) {
         currentNode = currentNode.getBestChild();
         currentNode.resetState();
       }
