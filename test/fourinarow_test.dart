@@ -51,7 +51,7 @@ void main() {
 
     var game = ConnectFourGame(
         board: board, bitboards: getBitBoards(board), scores: {});
-    var game2 = game.cloneAndApplyMove(6);
+    var game2 = game.cloneAndApplyMove(6, null);
     expect(game2.winner, isNull);
     expect(
         game2.board,
@@ -65,7 +65,7 @@ void main() {
         ]));
     game = ConnectFourGame(
         board: board, bitboards: getBitBoards(board), scores: {});
-    game = game.cloneAndApplyMove(3);
+    game = game.cloneAndApplyMove(3, null);
     expect(
         game.board,
         equals([
@@ -90,7 +90,7 @@ void main() {
         bitboards: getBitBoards(board),
         currentPlayer: Player.SECOND,
         scores: {});
-    game = game.cloneAndApplyMove(6);
+    game = game.cloneAndApplyMove(6, null);
     expect(game.winner, equals(Player.SECOND));
   });
 
@@ -108,7 +108,7 @@ void main() {
         }
         result =
             MCTS(gameState: game).getSimulationResult(iterations: iterations);
-        game = game.cloneAndApplyMove(result.move!);
+        game = game.cloneAndApplyMove(result.move!, result.root!);
       }
       if (game.winner == Player.SECOND) {
         smartWins++;

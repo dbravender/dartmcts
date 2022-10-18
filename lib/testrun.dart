@@ -21,7 +21,7 @@ void main() {
         //print("$move: ${node.visits}");
       });
 
-      gameState = gameState.cloneAndApplyMove(result.move);
+      gameState = gameState.cloneAndApplyMove(result.move, result.root!);
       //print('before: $boardBefore after: ${gameState.board}');
     }
     //print(gameState.formatBoard());

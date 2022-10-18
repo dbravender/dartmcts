@@ -91,7 +91,7 @@ class ConnectFourGame implements GameState<Move, Player> {
   }
 
   @override
-  ConnectFourGame cloneAndApplyMove(Move column) {
+  ConnectFourGame cloneAndApplyMove(Move column, Node<Move, Player>? root) {
     var newBitboards = Map<Player, int>.from(bitboards);
     Board newBoard =
         Board.from([for (var row in board) List<Player?>.from(row)]);

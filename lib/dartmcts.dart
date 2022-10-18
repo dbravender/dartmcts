@@ -7,7 +7,8 @@ var random = Random();
 class InvalidMove implements Exception {}
 
 abstract class GameState<MoveType, PlayerType> {
-  GameState<MoveType, PlayerType> cloneAndApplyMove(MoveType move);
+  GameState<MoveType, PlayerType> cloneAndApplyMove(
+      MoveType move, Node<MoveType, PlayerType>? root);
   List<MoveType> getMoves();
   GameState<MoveType, PlayerType>? determine(
       GameState<MoveType, PlayerType>? initialState);
@@ -18,6 +19,7 @@ abstract class GameState<MoveType, PlayerType> {
 
 class Node<MoveType, PlayerType> {
   GameState<MoveType?, PlayerType?>? gameState;
+  Node<MoveType, PlayerType>? root;
   final Node<MoveType, PlayerType>? parent;
   final MoveType? move;
   int visits;
@@ -38,8 +40,12 @@ class Node<MoveType, PlayerType> {
       this.visits = 0,
       this.depth = 0,
       this.draws = 0,
-      this.c = 1.41421356237}) // square root of 2
-      : initialState = gameState;
+      root,
+      this.c = 1.41421356237 // square root of 2
+      })
+      : initialState = gameState {
+    this.root ??= this;
+  }
 
   determine() {
     gameState = gameState!
@@ -59,6 +65,7 @@ class Node<MoveType, PlayerType> {
           gameState: gameState,
           move: move,
           parent: this,
+          root: root,
           c: c,
           depth: depth + 1);
     }
@@ -69,7 +76,7 @@ class Node<MoveType, PlayerType> {
     // the children when necessary
     if (_children.isEmpty || needStateReset) {
       if (move != null) {
-        gameState = initialState!.cloneAndApplyMove(move)
+        gameState = initialState!.cloneAndApplyMove(move, root)
             as GameState<MoveType?, PlayerType?>?;
       }
     }

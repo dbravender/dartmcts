@@ -16,7 +16,7 @@ class GameWithOneMove implements GameState<Move, Player> {
       {this.winner, required this.scores, this.currentPlayer = Player.FIRST});
 
   @override
-  GameWithOneMove cloneAndApplyMove(Move move) {
+  GameWithOneMove cloneAndApplyMove(Move move, Node<Move, Player>? root) {
     var newScores = {
       Player.FIRST: 1,
       Player.SECOND: 0,
@@ -54,7 +54,8 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
       this.currentPlayer = Player.FIRST});
 
   @override
-  GameWithScore cloneAndApplyMove(ScoringMove move) {
+  GameWithScore cloneAndApplyMove(
+      ScoringMove move, Node<ScoringMove, Player?>? root) {
     var newPlayer, newScores, newWinner;
     newScores = new Map<Player, int>.from(scores);
 
@@ -153,7 +154,7 @@ void main() {
       while (gameState.getMoves().length > 0) {
         MCTSResult<int?, TicTacToePlayer> result =
             MCTS(gameState: gameState).getSimulationResult(iterations: 100);
-        gameState = gameState.cloneAndApplyMove(result.move);
+        gameState = gameState.cloneAndApplyMove(result.move, result.root!);
       }
     }
   });

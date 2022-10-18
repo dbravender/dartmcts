@@ -59,7 +59,8 @@ class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
   }
 
   @override
-  TicTacToeGame cloneAndApplyMove(int? move) {
+  TicTacToeGame cloneAndApplyMove(
+      int? move, Node<int?, TicTacToePlayer>? root) {
     if (move == null) {
       return this;
     }
