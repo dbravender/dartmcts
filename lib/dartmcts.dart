@@ -91,9 +91,8 @@ class Node<MoveType, PlayerType> {
       return 0.0;
     }
     double normalizedScore = (maxScoreByPlayer[player] ?? 0) / maxScore;
-    var ucb = (normalizedScore *
-            (winsByPlayer[player] ?? 0 + (draws * 0.5)) /
-            visits) +
+    var ucb = (normalizedScore +
+            (winsByPlayer[player] ?? 0 + (draws * 0.5)) / visits) +
         (c * sqrt(log(parent!.visits.toDouble() / visits)));
     return ucb;
   }
