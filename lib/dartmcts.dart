@@ -32,18 +32,19 @@ class Node<MoveType, PlayerType> {
   bool needStateReset = false;
   double c;
   Map<MoveType?, Node<MoveType, PlayerType>> _children = {};
+  Function? backpropObserver;
 
-  Node(
-      {this.gameState,
-      this.parent,
-      this.move,
-      this.visits = 0,
-      this.depth = 0,
-      this.draws = 0,
-      root,
-      this.c = 1.41421356237 // square root of 2
-      })
-      : initialState = gameState {
+  Node({
+    this.gameState,
+    this.parent,
+    this.move,
+    this.visits = 0,
+    this.depth = 0,
+    this.draws = 0,
+    root,
+    this.c = 1.41421356237,
+    this.backpropObserver, // square root of 2
+  }) : initialState = gameState {
     this.root ??= this;
   }
 
@@ -63,6 +64,7 @@ class Node<MoveType, PlayerType> {
       }
       _children[move] = Node(
           gameState: gameState,
+          backpropObserver: backpropObserver,
           move: move,
           parent: this,
           root: root,
@@ -143,6 +145,15 @@ class Node<MoveType, PlayerType> {
   backProp() {
     var winner = gameState!.winner;
     Node<MoveType, PlayerType?>? currentNode = this;
+    Node<MoveType, PlayerType?>? rootNode = this;
+    int maxDepth = this.depth;
+
+    if (backpropObserver != null) {
+      while (rootNode!.parent != null) {
+        rootNode = rootNode.parent;
+      }
+      backpropObserver!(winner, rootNode, currentNode);
+    }
     while (currentNode != null) {
       currentNode.visits += 1;
       if (winner == null) {
@@ -188,9 +199,10 @@ class MCTSResult<MoveType, PlayerType> {
 
 class MCTS<MoveType, PlayerType> {
   GameState<MoveType, PlayerType>? gameState;
+  Function? backpropObserver;
   double c = 1.41421356237; // square root of 2
 
-  MCTS({this.gameState});
+  MCTS({this.gameState, this.backpropObserver});
   MCTSResult<MoveType, PlayerType> getSimulationResult(
       {Node<MoveType, PlayerType>? initialRootNode,
       int iterations = 100,
@@ -198,7 +210,12 @@ class MCTS<MoveType, PlayerType> {
       List<MoveType>? actualMoves}) {
     var rootNode = initialRootNode;
     if (rootNode == null) {
-      rootNode = Node(gameState: gameState, parent: null, move: null, c: c);
+      rootNode = Node(
+          gameState: gameState,
+          parent: null,
+          move: null,
+          c: c,
+          backpropObserver: backpropObserver);
     }
     var plays = 0;
     var maxDepth = 0;
