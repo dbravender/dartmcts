@@ -14,7 +14,6 @@ abstract class GameState<MoveType, PlayerType> {
       GameState<MoveType, PlayerType>? initialState);
   PlayerType? winner;
   PlayerType? currentPlayer;
-  Map<PlayerType, int> scores = {};
 }
 
 abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
@@ -30,8 +29,6 @@ class Node<MoveType, PlayerType> {
   final MoveType? move;
   int visits;
   final int depth;
-  final Map<PlayerType, int> minScoreByPlayer = {};
-  final Map<PlayerType, int> maxScoreByPlayer = {};
   final Map<PlayerType, int> winsByPlayer = {};
   int draws;
   final GameState? initialState;
@@ -104,13 +101,11 @@ class Node<MoveType, PlayerType> {
         _children.entries.where((x) => moves.contains(x.value.move)));
   }
 
-  double ucb1(PlayerType player, int maxScore, double priorScore) {
+  double ucb1(PlayerType player, double priorScore) {
     if (parent == null || visits == 0) {
-      return 0.0;
+      return priorScore;
     }
-    double normalizedScore = (maxScoreByPlayer[player] ?? 0) / maxScore;
-    var ucb = (normalizedScore +
-            (winsByPlayer[player] ?? 0 + (draws * 0.5)) / visits) +
+    var ucb = ((winsByPlayer[player] ?? 0 + (draws * 0)) / visits) +
         (c * priorScore * sqrt(log(parent!.visits.toDouble() / visits)));
     return ucb;
   }
@@ -131,15 +126,14 @@ class Node<MoveType, PlayerType> {
     }
     var player = currentPlayer();
     var sortedChildren = children.entries.toList();
-    var maxScore = 1;
-    var minScore = 0;
-    sortedChildren.forEach((child) {
-      maxScore = max(maxScore, child.value.maxScoreByPlayer[player] ?? 0);
-      minScore = min(minScore, child.value.minScoreByPlayer[player] ?? 0);
-    });
     sortedChildren.sort((a, b) {
       var aVisits = a.value.visits;
       var bVisits = b.value.visits;
+      if (_moveProbabilitiesFromNN.isNotEmpty &&
+          (aVisits == 0 || bVisits == 0)) {
+        return (_moveProbabilitiesFromNN[b.key]!)
+            .compareTo(_moveProbabilitiesFromNN[a.key]!);
+      }
       if (aVisits == 0 && bVisits == 0) {
         return random.nextInt(100).compareTo(random.nextInt(100));
       }
@@ -149,10 +143,10 @@ class Node<MoveType, PlayerType> {
       if (bVisits == 0) {
         return 1;
       }
-      double bScore = b.value
-          .ucb1(player, maxScore, _moveProbabilitiesFromNN[b.key] ?? 1.0);
-      double aScore = a.value
-          .ucb1(player, maxScore, _moveProbabilitiesFromNN[a.key] ?? 1.0);
+      double bScore =
+          b.value.ucb1(player, _moveProbabilitiesFromNN[b.key] ?? 1.0);
+      double aScore =
+          a.value.ucb1(player, _moveProbabilitiesFromNN[a.key] ?? 1.0);
       return bScore.compareTo(aScore);
     });
     List<MapEntry<MoveType?, Node<MoveType, PlayerType?>>> tiedChildren = [];
@@ -181,14 +175,6 @@ class Node<MoveType, PlayerType> {
       if (winner == null) {
         currentNode.draws += 1;
       } else {
-        gameState!.scores.forEach((player, score) {
-          currentNode!.maxScoreByPlayer.update(
-              player, (value) => score > value ? score : value,
-              ifAbsent: () => score);
-          currentNode.minScoreByPlayer.update(
-              player, (value) => score < value ? score : value,
-              ifAbsent: () => score);
-        });
         currentNode.winsByPlayer
             .update(winner, (value) => value + 1, ifAbsent: () => 0);
       }
