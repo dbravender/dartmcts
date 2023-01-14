@@ -112,6 +112,34 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
   }
 }
 
+class testNNPV implements NeuralNetworkPolicyAndValue<int?, TicTacToePlayer> {
+  @override
+  double getCurrentValue(GameState<int?, TicTacToePlayer> game) {
+    // TODO: implement getCurrentValue
+    throw UnimplementedError();
+  }
+
+  @override
+  Map<int?, double> getMoveProbabilities(
+      GameState<int?, TicTacToePlayer?> game) {
+    // pretend that the neural net thinks corner moves are good first moves
+    if (game.getMoves().length == 9) {
+      return <int?, double>{
+        0: 0.25,
+        1: 0,
+        2: 0.25,
+        3: 0,
+        4: 0,
+        5: 0,
+        6: 0.25,
+        7: 0,
+        8: 0.25,
+      };
+    }
+    return {};
+  }
+}
+
 void main() {
   test('game with one move works', () {
     var game = GameWithOneMove(scores: {});
@@ -170,5 +198,28 @@ void main() {
         greaterThan(result.root!.children[ScoringMove.SCORE_5]?.visits ?? 0));
     expect(result.root!.children[ScoringMove.SCORE_100]?.visits ?? 0,
         greaterThan(result.root!.children[ScoringMove.SCORE_10]?.visits ?? 0));
+  });
+  test('visits neural net prescribed nodes more frequently', () {
+    var o = TicTacToePlayer.O;
+    var x = TicTacToePlayer.X;
+    var e;
+    var ttgg = TicTacToeGame(
+        board: [e, e, e, e, e, e, e, e, e], currentPlayer: o, scores: {});
+    MCTSResult<int?, TicTacToePlayer> result = MCTS(gameState: ttgg)
+        .getSimulationResult(iterations: 100, nnpv: testNNPV());
+    expect(result.root!.children.length, equals(9));
+    expect(result.maxDepth, equals(9));
+    Map<int?, int> visits = {};
+    result.root!.children.forEach((key, value) {
+      visits[value.move] = value.visits;
+    });
+    print(visits);
+    ttgg = TicTacToeGame(
+        board: [e, e, e, e, e, e, e, e, e], currentPlayer: o, scores: {});
+    result = MCTS(gameState: ttgg).getSimulationResult(iterations: 100);
+    result.root!.children.forEach((key, value) {
+      visits[value.move] = value.visits;
+    });
+    print(visits);
   });
 }
