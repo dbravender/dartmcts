@@ -19,8 +19,6 @@ abstract class GameState<MoveType, PlayerType> {
 abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
   Map<MoveType, double> getMoveProbabilities(
       GameState<MoveType?, PlayerType?> game);
-  Map<MoveType, double> getQValues(GameState<MoveType?, PlayerType?> game);
-  double getCurrentValue(GameState<MoveType, PlayerType> game);
 }
 
 class Node<MoveType, PlayerType> {
@@ -39,8 +37,6 @@ class Node<MoveType, PlayerType> {
   NeuralNetworkPolicyAndValue? nnpv;
   Map<MoveType?, double> _moveProbabilitiesFromNN = {};
   Function? backpropObserver;
-  int? useValueAfterDepth;
-  double? valueThreshold;
   Map<MoveType?, double> initialQs = {};
   double q = 0;
 
@@ -55,8 +51,6 @@ class Node<MoveType, PlayerType> {
     this.c = 1.41421356237, // square root of 2
     this.backpropObserver,
     this.nnpv,
-    this.useValueAfterDepth,
-    this.valueThreshold,
     this.q = 0,
   }) : initialState = gameState {
     this.root ??= this;
@@ -72,9 +66,6 @@ class Node<MoveType, PlayerType> {
   }
 
   addNewChildrenForDetermination(List<MoveType?> moves) {
-    if (initialQs.isEmpty && nnpv != null) {
-      initialQs = nnpv!.getQValues(gameState!) as Map<MoveType?, double>;
-    }
     for (var move in moves) {
       if (_children.containsKey(move)) {
         continue;
@@ -88,9 +79,7 @@ class Node<MoveType, PlayerType> {
         c: c,
         depth: depth + 1,
         nnpv: nnpv,
-        useValueAfterDepth: useValueAfterDepth,
-        valueThreshold: valueThreshold,
-      ); //q: initialQs[move] ?? 0);
+      );
     }
   }
 
@@ -238,8 +227,6 @@ class MCTS<MoveType, PlayerType> {
     double? maxSeconds,
     List<MoveType>? actualMoves,
     NeuralNetworkPolicyAndValue? nnpv,
-    int? useValueAfterDepth,
-    double? valueThreshold,
     double? c,
   }) {
     var rootNode = initialRootNode;
@@ -251,8 +238,6 @@ class MCTS<MoveType, PlayerType> {
         c: c ?? 1.41421356237, // square root of 2
         backpropObserver: backpropObserver,
         nnpv: nnpv,
-        useValueAfterDepth: useValueAfterDepth,
-        valueThreshold: valueThreshold,
       );
     }
     var plays = 0;
@@ -275,20 +260,8 @@ class MCTS<MoveType, PlayerType> {
       plays += 1;
       Node<MoveType, PlayerType?> currentNode = rootNode;
 
-      t:
       while (currentNode.children.length > 0 &&
           currentNode.gameState?.winner == null) {
-        if (currentNode.useValueAfterDepth != null &&
-            currentNode.depth >= currentNode.useValueAfterDepth!) {
-          if (currentNode.nnpv!.getCurrentValue(currentNode.gameState!) >=
-              currentNode.valueThreshold!) {
-            currentNode.gameState!.winner =
-                currentNode.gameState!.currentPlayer;
-          } else {
-            currentNode.gameState!.winner = null;
-          }
-          break t;
-        }
         currentNode = currentNode.getBestChild();
         currentNode.resetState();
       }

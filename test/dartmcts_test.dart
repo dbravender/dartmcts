@@ -114,12 +114,6 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
 
 class TestNNPV implements NeuralNetworkPolicyAndValue<int?, TicTacToePlayer> {
   @override
-  double getCurrentValue(GameState<int?, TicTacToePlayer> game) {
-    // TODO: implement getCurrentValue
-    throw UnimplementedError();
-  }
-
-  @override
   Map<int?, double> getMoveProbabilities(
       GameState<int?, TicTacToePlayer?> game) {
     // pretend that the neural net thinks corner moves are good first moves
@@ -137,21 +131,6 @@ class TestNNPV implements NeuralNetworkPolicyAndValue<int?, TicTacToePlayer> {
       };
     }
     return {};
-  }
-
-  @override
-  Map<int?, double> getQValues(GameState<int?, TicTacToePlayer?> game) {
-    return <int?, double>{
-      0: 0,
-      1: 0,
-      2: 0,
-      3: 0,
-      4: 0,
-      5: 0,
-      6: 0,
-      7: 0,
-      8: 0,
-    };
   }
 }
 
