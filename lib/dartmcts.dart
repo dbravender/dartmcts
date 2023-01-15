@@ -239,6 +239,8 @@ class MCTS<MoveType, PlayerType> {
         backpropObserver: backpropObserver,
         nnpv: nnpv,
       );
+    } else {
+      rootNode.resetState();
     }
     var plays = 0;
     var maxDepth = 0;
