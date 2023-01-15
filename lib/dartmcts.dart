@@ -19,6 +19,7 @@ abstract class GameState<MoveType, PlayerType> {
 abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
   Map<MoveType, double> getMoveProbabilities(
       GameState<MoveType?, PlayerType?> game);
+  Map<MoveType, double> getQValues(GameState<MoveType?, PlayerType?> game);
   double getCurrentValue(GameState<MoveType, PlayerType> game);
 }
 
@@ -40,6 +41,8 @@ class Node<MoveType, PlayerType> {
   Function? backpropObserver;
   int? useValueAfterDepth;
   double? valueThreshold;
+  Map<MoveType?, double> initialQs = {};
+  double q = 0;
 
   Node({
     this.gameState,
@@ -54,6 +57,7 @@ class Node<MoveType, PlayerType> {
     this.nnpv,
     this.useValueAfterDepth,
     this.valueThreshold,
+    this.q = 0,
   }) : initialState = gameState {
     this.root ??= this;
   }
@@ -68,21 +72,25 @@ class Node<MoveType, PlayerType> {
   }
 
   addNewChildrenForDetermination(List<MoveType?> moves) {
+    if (initialQs.isEmpty && nnpv != null) {
+      initialQs = nnpv!.getQValues(gameState!) as Map<MoveType?, double>;
+    }
     for (var move in moves) {
       if (_children.containsKey(move)) {
         continue;
       }
       _children[move] = Node(
-          gameState: gameState,
-          backpropObserver: backpropObserver,
-          move: move,
-          parent: this,
-          root: root,
-          c: c,
-          depth: depth + 1,
-          nnpv: nnpv,
-          useValueAfterDepth: useValueAfterDepth,
-          valueThreshold: valueThreshold);
+        gameState: gameState,
+        backpropObserver: backpropObserver,
+        move: move,
+        parent: this,
+        root: root,
+        c: c,
+        depth: depth + 1,
+        nnpv: nnpv,
+        useValueAfterDepth: useValueAfterDepth,
+        valueThreshold: valueThreshold,
+      ); //q: initialQs[move] ?? 0);
     }
   }
 
@@ -103,11 +111,19 @@ class Node<MoveType, PlayerType> {
 
   double ucb1(PlayerType player, double priorScore) {
     if (parent == null || visits == 0) {
-      return priorScore;
+      return 0;
     }
-    var ucb = ((winsByPlayer[player] ?? 0 + (draws * 0)) / visits) +
-        (c * priorScore * sqrt(log(parent!.visits.toDouble() / visits)));
-    return ucb;
+    if (priorScore == 1.0) {
+      return ((winsByPlayer[player] ?? 0 + (draws * 0.5)) / visits) +
+          (c * sqrt(log(parent!.visits.toDouble()) / visits));
+    } else {
+      // Q[s][a] + c_puct*P[s][a]*sqrt(sum(N[s]))/(1+N[s][a])
+      return q +
+          c *
+              priorScore *
+              sqrt(parent!.visits.toDouble()) /
+              (1.0 + visits.toDouble());
+    }
   }
 
   PlayerType? getWinner() {
@@ -130,7 +146,7 @@ class Node<MoveType, PlayerType> {
       var aVisits = a.value.visits;
       var bVisits = b.value.visits;
       if (_moveProbabilitiesFromNN.isNotEmpty &&
-          (aVisits == 0 || bVisits == 0)) {
+          (aVisits == 0 && bVisits == 0)) {
         return (_moveProbabilitiesFromNN[b.key]!)
             .compareTo(_moveProbabilitiesFromNN[a.key]!);
       }
@@ -171,13 +187,19 @@ class Node<MoveType, PlayerType> {
       backpropObserver!(winner, rootNode, currentNode);
     }
     while (currentNode != null) {
-      currentNode.visits += 1;
+      double reward = 0.0;
       if (winner == null) {
         currentNode.draws += 1;
+        reward = 0.5;
       } else {
         currentNode.winsByPlayer
             .update(winner, (value) => value + 1, ifAbsent: () => 0);
+        reward = currentNode.parent?.currentPlayer() == winner ? 1 : 0;
       }
+      // Q[s][a] = (N[s][a]*Q[s][a] + v)/(N[s][a]+1)
+      currentNode.q = (currentNode.visits * currentNode.q + reward) /
+          (currentNode.visits + 1.0);
+      currentNode.visits += 1;
       currentNode = currentNode.parent;
     }
   }
@@ -208,7 +230,6 @@ class MCTSResult<MoveType, PlayerType> {
 class MCTS<MoveType, PlayerType> {
   GameState<MoveType, PlayerType>? gameState;
   Function? backpropObserver;
-  double c = 1.41421356237; // square root of 2
 
   MCTS({this.gameState, this.backpropObserver});
   MCTSResult<MoveType, PlayerType> getSimulationResult({
@@ -219,6 +240,7 @@ class MCTS<MoveType, PlayerType> {
     NeuralNetworkPolicyAndValue? nnpv,
     int? useValueAfterDepth,
     double? valueThreshold,
+    double? c,
   }) {
     var rootNode = initialRootNode;
     if (rootNode == null) {
@@ -226,7 +248,7 @@ class MCTS<MoveType, PlayerType> {
         gameState: gameState,
         parent: null,
         move: null,
-        c: c,
+        c: c ?? 1.41421356237, // square root of 2
         backpropObserver: backpropObserver,
         nnpv: nnpv,
         useValueAfterDepth: useValueAfterDepth,

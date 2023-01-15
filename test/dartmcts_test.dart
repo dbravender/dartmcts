@@ -112,7 +112,7 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
   }
 }
 
-class testNNPV implements NeuralNetworkPolicyAndValue<int?, TicTacToePlayer> {
+class TestNNPV implements NeuralNetworkPolicyAndValue<int?, TicTacToePlayer> {
   @override
   double getCurrentValue(GameState<int?, TicTacToePlayer> game) {
     // TODO: implement getCurrentValue
@@ -137,6 +137,21 @@ class testNNPV implements NeuralNetworkPolicyAndValue<int?, TicTacToePlayer> {
       };
     }
     return {};
+  }
+
+  @override
+  Map<int?, double> getQValues(GameState<int?, TicTacToePlayer?> game) {
+    return <int?, double>{
+      0: 0,
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+      6: 0,
+      7: 0,
+      8: 0,
+    };
   }
 }
 
@@ -201,12 +216,11 @@ void main() {
   });
   test('visits neural net prescribed nodes more frequently', () {
     var o = TicTacToePlayer.O;
-    var x = TicTacToePlayer.X;
     var e;
     var ttgg = TicTacToeGame(
         board: [e, e, e, e, e, e, e, e, e], currentPlayer: o, scores: {});
     MCTSResult<int?, TicTacToePlayer> result = MCTS(gameState: ttgg)
-        .getSimulationResult(iterations: 100, nnpv: testNNPV());
+        .getSimulationResult(iterations: 100, nnpv: TestNNPV());
     expect(result.root!.children.length, equals(9));
     expect(result.maxDepth, equals(9));
     Map<int?, int> visits = {};
