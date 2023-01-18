@@ -19,6 +19,25 @@ abstract class GameState<MoveType, PlayerType> {
 abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
   Map<MoveType, double> getMoveProbabilities(
       GameState<MoveType?, PlayerType?> game);
+  double getValue(GameState<MoveType?, PlayerType?> game);
+}
+
+class Config {
+  late double c;
+  Function? backpropObserver;
+  NeuralNetworkPolicyAndValue? nnpv;
+
+  Config({
+    double? c,
+    this.backpropObserver,
+    this.nnpv,
+  }) {
+    if (c == null) {
+      this.c = 1.41421356237; // square root of 2
+    } else {
+      this.c = c;
+    }
+  }
 }
 
 class Node<MoveType, PlayerType> {
@@ -32,12 +51,9 @@ class Node<MoveType, PlayerType> {
   int draws;
   final GameState? initialState;
   bool needStateReset = false;
-  double c;
   Map<MoveType?, Node<MoveType, PlayerType>> _children = {};
-  NeuralNetworkPolicyAndValue? nnpv;
   Map<MoveType?, double> _moveProbabilitiesFromNN = {};
-  Function? backpropObserver;
-  Map<MoveType?, double> initialQs = {};
+  Config config;
   double q = 0;
 
   Node({
@@ -48,9 +64,7 @@ class Node<MoveType, PlayerType> {
     this.depth = 0,
     this.draws = 0,
     root,
-    this.c = 1.41421356237, // square root of 2
-    this.backpropObserver,
-    this.nnpv,
+    required this.config,
     this.q = 0,
   }) : initialState = gameState {
     this.root ??= this;
@@ -72,13 +86,11 @@ class Node<MoveType, PlayerType> {
       }
       _children[move] = Node(
         gameState: gameState,
-        backpropObserver: backpropObserver,
+        config: config,
         move: move,
         parent: this,
         root: root,
-        c: c,
         depth: depth + 1,
-        nnpv: nnpv,
       );
     }
   }
@@ -104,11 +116,11 @@ class Node<MoveType, PlayerType> {
     }
     if (priorScore == 1.0) {
       return ((winsByPlayer[player] ?? 0 + (draws * 0.5)) / visits) +
-          (c * sqrt(log(parent!.visits.toDouble()) / visits));
+          (config.c * sqrt(log(parent!.visits.toDouble()) / visits));
     } else {
       // Q[s][a] + c_puct*P[s][a]*sqrt(sum(N[s]))/(1+N[s][a])
       return q +
-          c *
+          config.c *
               priorScore *
               sqrt(parent!.visits.toDouble()) /
               (1.0 + visits.toDouble());
@@ -124,8 +136,8 @@ class Node<MoveType, PlayerType> {
   }
 
   Node<MoveType, PlayerType?> getBestChild() {
-    if (nnpv != null && _moveProbabilitiesFromNN.isEmpty) {
-      _moveProbabilitiesFromNN = nnpv!.getMoveProbabilities(
+    if (config.nnpv != null && _moveProbabilitiesFromNN.isEmpty) {
+      _moveProbabilitiesFromNN = config.nnpv!.getMoveProbabilities(
               gameState as GameState<MoveType?, PlayerType>)
           as Map<MoveType?, double>;
     }
@@ -169,11 +181,11 @@ class Node<MoveType, PlayerType> {
     Node<MoveType, PlayerType?>? currentNode = this;
     Node<MoveType, PlayerType?>? rootNode = this;
 
-    if (backpropObserver != null) {
+    if (config.backpropObserver != null) {
       while (rootNode!.parent != null) {
         rootNode = rootNode.parent;
       }
-      backpropObserver!(winner, rootNode, currentNode);
+      config.backpropObserver!(winner, rootNode, currentNode);
     }
     while (currentNode != null) {
       double reward = 0.0;
@@ -235,9 +247,7 @@ class MCTS<MoveType, PlayerType> {
         gameState: gameState,
         parent: null,
         move: null,
-        c: c ?? 1.41421356237, // square root of 2
-        backpropObserver: backpropObserver,
-        nnpv: nnpv,
+        config: Config(c: c, backpropObserver: backpropObserver, nnpv: nnpv),
       );
     } else {
       rootNode.resetState();

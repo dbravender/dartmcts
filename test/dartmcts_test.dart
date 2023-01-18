@@ -132,6 +132,11 @@ class TestNNPV implements NeuralNetworkPolicyAndValue<int?, TicTacToePlayer> {
     }
     return {};
   }
+
+  @override
+  double getValue(GameState<int?, TicTacToePlayer?> game) {
+    return 0;
+  }
 }
 
 void main() {
