@@ -18,19 +18,23 @@ abstract class GameState<MoveType, PlayerType> {
 
 abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
   Map<MoveType, double> getMoveProbabilities(
-      GameState<MoveType?, PlayerType?> game);
-  double getValue(GameState<MoveType?, PlayerType?> game);
+      GameState<MoveType, PlayerType?> game);
+  double getValue(GameState<MoveType, PlayerType?> game);
 }
 
 class Config {
   late double c;
   Function? backpropObserver;
   NeuralNetworkPolicyAndValue? nnpv;
+  double? valueThreshold;
+  int? useValueAfterDepth;
 
   Config({
     double? c,
     this.backpropObserver,
     this.nnpv,
+    this.valueThreshold,
+    this.useValueAfterDepth,
   }) {
     if (c == null) {
       this.c = 1.41421356237; // square root of 2
@@ -176,8 +180,7 @@ class Node<MoveType, PlayerType> {
     return tiedChildren.first.value;
   }
 
-  backProp() {
-    var winner = gameState!.winner;
+  backProp(PlayerType? winner) {
     Node<MoveType, PlayerType?>? currentNode = this;
     Node<MoveType, PlayerType?>? rootNode = this;
 
@@ -240,20 +243,30 @@ class MCTS<MoveType, PlayerType> {
     List<MoveType>? actualMoves,
     NeuralNetworkPolicyAndValue? nnpv,
     double? c,
+    int? useValueAfterDepth,
+    double? valueThreshold,
   }) {
     var rootNode = initialRootNode;
+    Config config = Config(
+        c: c,
+        backpropObserver: backpropObserver,
+        nnpv: nnpv,
+        useValueAfterDepth: useValueAfterDepth,
+        valueThreshold: valueThreshold);
     if (rootNode == null) {
       rootNode = Node(
         gameState: gameState,
         parent: null,
         move: null,
-        config: Config(c: c, backpropObserver: backpropObserver, nnpv: nnpv),
+        config: config,
       );
     } else {
       rootNode.resetState();
     }
+    rootNode.config = config;
     var plays = 0;
     var maxDepth = 0;
+    var currentDepth = 0;
     var startTime = DateTime.now();
 
     var iterationsToRun = iterations;
@@ -272,13 +285,25 @@ class MCTS<MoveType, PlayerType> {
       plays += 1;
       Node<MoveType, PlayerType?> currentNode = rootNode;
 
+      PlayerType? winner;
+
       while (currentNode.children.length > 0 &&
           currentNode.gameState?.winner == null) {
         currentNode = currentNode.getBestChild();
         currentNode.resetState();
+        if (currentNode.gameState?.winner != null) {
+          winner = currentNode.gameState?.winner;
+          break;
+        }
+        winner = getShortcutWinner(currentDepth, config, currentNode);
+        if (config.useValueAfterDepth != null &&
+            currentDepth >= config.useValueAfterDepth!) {
+          break;
+        }
+        currentDepth += 1;
       }
 
-      currentNode.backProp();
+      currentNode.backProp(winner);
       maxDepth = max(maxDepth, currentNode.depth);
     }
 
@@ -286,5 +311,21 @@ class MCTS<MoveType, PlayerType> {
 
     return MCTSResult(
         root: rootNode, move: selectedMove, maxDepth: maxDepth, plays: plays);
+  }
+
+  PlayerType? getShortcutWinner(int currentDepth, Config config,
+      Node<MoveType, PlayerType?> currentNode) {
+    if (config.nnpv != null &&
+        config.useValueAfterDepth != null &&
+        config.valueThreshold != null) {
+      if (currentDepth > config.useValueAfterDepth!) {
+        double currentValue = config.nnpv!.getValue(
+            currentNode.gameState as GameState<MoveType, PlayerType?>);
+        if (currentValue >= config.valueThreshold!) {
+          return currentNode.gameState!.currentPlayer;
+        }
+      }
+    }
+    return null;
   }
 }
