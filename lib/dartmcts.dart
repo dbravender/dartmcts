@@ -14,6 +14,9 @@ abstract class GameState<MoveType, PlayerType> {
       GameState<MoveType, PlayerType>? initialState);
   PlayerType? winner;
   PlayerType? currentPlayer;
+  Map<String, dynamic> toJson() {
+    return {};
+  }
 }
 
 abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
