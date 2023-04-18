@@ -37,6 +37,12 @@ class GameWithOneMove implements GameState<Move, Player> {
   GameState<Move, Player> determine(GameState<Move, Player>? initialState) {
     return this;
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    // TODO: implement toJson
+    throw UnimplementedError();
+  }
 }
 
 enum ScoringMove { SCORE_5, SCORE_10, SCORE_100 }
@@ -109,6 +115,12 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
   GameState<ScoringMove, Player?> determine(
       GameState<ScoringMove, Player?>? initialState) {
     return this;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    // TODO: implement toJson
+    throw UnimplementedError();
   }
 }
 

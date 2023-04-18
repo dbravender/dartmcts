@@ -114,4 +114,10 @@ class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
     }
     return formattedBoard;
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    // TODO: implement toJson
+    throw UnimplementedError();
+  }
 }
