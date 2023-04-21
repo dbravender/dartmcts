@@ -91,6 +91,12 @@ class ConnectFourGame implements GameState<Move, Player> {
   }
 
   @override
+  Map<String, dynamic> toJson() {
+    // TODO: implement toJson
+    throw UnimplementedError();
+  }
+
+  @override
   ConnectFourGame cloneAndApplyMove(Move column, Node<Move, Player>? root) {
     var newBitboards = Map<Player, int>.from(bitboards);
     Board newBoard =

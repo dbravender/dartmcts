@@ -19,16 +19,23 @@ abstract class GameState<MoveType, PlayerType> {
   }
 }
 
-abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
-  Map<MoveType, double> getMoveProbabilities(
-      GameState<MoveType, PlayerType?> game);
-  double getValue(GameState<MoveType, PlayerType?> game);
+class NNPVResult<MoveType> {
+  Map<MoveType, double> probabilities;
+  Map<MoveType, double> qs;
+  double value;
+
+  NNPVResult(
+      {required this.probabilities, required this.qs, required this.value});
 }
 
-class Config {
+abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
+  NNPVResult<MoveType> getResult(GameState<MoveType, PlayerType?> game);
+}
+
+class Config<MoveType, PlayerType> {
   late double c;
   Function? backpropObserver;
-  NeuralNetworkPolicyAndValue? nnpv;
+  NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv;
   double? valueThreshold;
   int? useValueAfterDepth;
 
@@ -59,8 +66,8 @@ class Node<MoveType, PlayerType> {
   final GameState? initialState;
   bool needStateReset = false;
   Map<MoveType?, Node<MoveType, PlayerType>> _children = {};
-  Map<MoveType?, double> _moveProbabilitiesFromNN = {};
-  Config config;
+  NNPVResult<MoveType>? _nnpvResult;
+  Config<MoveType, PlayerType> config;
   double q = 0;
 
   Node({
@@ -142,21 +149,23 @@ class Node<MoveType, PlayerType> {
     return gameState!.currentPlayer;
   }
 
-  Node<MoveType, PlayerType?> getBestChild() {
-    if (config.nnpv != null && _moveProbabilitiesFromNN.isEmpty) {
-      _moveProbabilitiesFromNN = config.nnpv!.getMoveProbabilities(
-              gameState as GameState<MoveType?, PlayerType>)
-          as Map<MoveType?, double>;
+  NNPVResult<MoveType> get nnpvResult {
+    if (_nnpvResult == null && config.nnpv != null) {
+      _nnpvResult =
+          config.nnpv!.getResult(gameState as GameState<MoveType, PlayerType?>);
     }
+    return _nnpvResult!;
+  }
+
+  Node<MoveType, PlayerType?> getBestChild() {
     var player = currentPlayer();
     var sortedChildren = children.entries.toList();
     sortedChildren.sort((a, b) {
       var aVisits = a.value.visits;
       var bVisits = b.value.visits;
-      if (_moveProbabilitiesFromNN.isNotEmpty &&
-          (aVisits == 0 && bVisits == 0)) {
-        return (_moveProbabilitiesFromNN[b.key]!)
-            .compareTo(_moveProbabilitiesFromNN[a.key]!);
+      if (config.nnpv != null && (aVisits == 0 && bVisits == 0)) {
+        return (nnpvResult.probabilities[b.key] ?? 0)
+            .compareTo(nnpvResult.probabilities[a.key] ?? 0);
       }
       if (aVisits == 0 && bVisits == 0) {
         return random.nextInt(100).compareTo(random.nextInt(100));
@@ -167,10 +176,10 @@ class Node<MoveType, PlayerType> {
       if (bVisits == 0) {
         return 1;
       }
-      double bScore =
-          b.value.ucb1(player, _moveProbabilitiesFromNN[b.key] ?? 1.0);
-      double aScore =
-          a.value.ucb1(player, _moveProbabilitiesFromNN[a.key] ?? 1.0);
+      double bScore = b.value.ucb1(player,
+          config.nnpv != null ? (nnpvResult.probabilities[b.key] ?? 1.0) : 1.0);
+      double aScore = a.value.ucb1(player,
+          config.nnpv != null ? (nnpvResult.probabilities[a.key] ?? 1.0) : 1.0);
       return bScore.compareTo(aScore);
     });
     List<MapEntry<MoveType?, Node<MoveType, PlayerType?>>> tiedChildren = [];
@@ -244,13 +253,13 @@ class MCTS<MoveType, PlayerType> {
     int iterations = 100,
     double? maxSeconds,
     List<MoveType>? actualMoves,
-    NeuralNetworkPolicyAndValue? nnpv,
+    NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv,
     double? c,
     int? useValueAfterDepth,
     double? valueThreshold,
   }) {
     var rootNode = initialRootNode;
-    Config config = Config(
+    Config<MoveType, PlayerType> config = Config(
         c: c,
         backpropObserver: backpropObserver,
         nnpv: nnpv,
@@ -299,8 +308,7 @@ class MCTS<MoveType, PlayerType> {
           break;
         }
         winner = getShortcutWinner(currentDepth, config, currentNode);
-        if (config.useValueAfterDepth != null &&
-            currentDepth >= config.useValueAfterDepth!) {
+        if (winner != null) {
           break;
         }
         currentDepth += 1;
@@ -321,9 +329,8 @@ class MCTS<MoveType, PlayerType> {
     if (config.nnpv != null &&
         config.useValueAfterDepth != null &&
         config.valueThreshold != null) {
-      if (currentDepth > config.useValueAfterDepth!) {
-        double currentValue = config.nnpv!.getValue(
-            currentNode.gameState as GameState<MoveType, PlayerType?>);
+      if (currentDepth >= config.useValueAfterDepth!) {
+        double currentValue = currentNode.nnpvResult.value;
         if (currentValue >= config.valueThreshold!) {
           return currentNode.gameState!.currentPlayer;
         }
