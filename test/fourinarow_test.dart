@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 import 'package:dartmcts/fourinarow.dart';
 import 'package:dartmcts/dartmcts.dart';
