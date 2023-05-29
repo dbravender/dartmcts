@@ -209,7 +209,7 @@ class Node<MoveType, PlayerType> {
         reward = 0.5;
       } else {
         currentNode.winsByPlayer
-            .update(winner, (value) => value + 1, ifAbsent: () => 0);
+            .update(winner, (value) => value + 1, ifAbsent: () => 1);
         reward = currentNode.parent?.currentPlayer() == winner ? 1 : 0;
       }
       // Q[s][a] = (N[s][a]*Q[s][a] + v)/(N[s][a]+1)
