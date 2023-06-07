@@ -14,9 +14,7 @@ abstract class GameState<MoveType, PlayerType> {
       GameState<MoveType, PlayerType>? initialState);
   PlayerType? winner;
   PlayerType? currentPlayer;
-  Map<String, dynamic> toJson() {
-    return {};
-  }
+  Map<String, dynamic> toJson();
 }
 
 class NNPVResult<MoveType> {
