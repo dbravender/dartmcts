@@ -102,9 +102,9 @@ void main() {
         MCTSResult<Move, Player> result;
         int iterations;
         if (game.currentPlayer == Player.FIRST) {
-          iterations = 5;
+          iterations = 1;
         } else {
-          iterations = 10;
+          iterations = 30;
         }
         result =
             MCTS(gameState: game).getSimulationResult(iterations: iterations);
