@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:test/test.dart';
 
 import 'package:dartmcts/fourinarow.dart';
@@ -106,8 +108,8 @@ void main() {
         } else {
           iterations = 30;
         }
-        result =
-            MCTS(gameState: game).getSimulationResult(iterations: iterations);
+        result = MCTS(gameState: game)
+            .getSimulationResult(iterations: iterations, random: Random(124));
         game = game.cloneAndApplyMove(result.move!, result.root!);
       }
       if (game.winner == Player.SECOND) {

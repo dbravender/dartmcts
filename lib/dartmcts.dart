@@ -2,8 +2,6 @@ library dartmcts;
 
 import 'dart:math';
 
-var random = Random();
-
 class InvalidMove implements Exception {}
 
 abstract class GameState<MoveType, PlayerType> {
@@ -36,6 +34,7 @@ class Config<MoveType, PlayerType> {
   NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv;
   double? valueThreshold;
   int? useValueAfterDepth;
+  late Random random;
 
   Config({
     double? c,
@@ -43,12 +42,10 @@ class Config<MoveType, PlayerType> {
     this.nnpv,
     this.valueThreshold,
     this.useValueAfterDepth,
+    Random? random,
   }) {
-    if (c == null) {
-      this.c = 1.41421356237; // square root of 2
-    } else {
-      this.c = c;
-    }
+    this.random = random ?? Random();
+    this.c = c ?? 1.41421356237; // square root of 2
   }
 }
 
@@ -166,7 +163,7 @@ class Node<MoveType, PlayerType> {
             .compareTo(nnpvResult.probabilities[a.key] ?? 0);
       }
       if (aVisits == 0 && bVisits == 0) {
-        return random.nextInt(100).compareTo(random.nextInt(100));
+        return config.random.nextInt(100).compareTo(config.random.nextInt(100));
       }
       if (aVisits == 0) {
         return -1;
@@ -255,6 +252,7 @@ class MCTS<MoveType, PlayerType> {
     double? c,
     int? useValueAfterDepth,
     double? valueThreshold,
+    Random? random,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
@@ -262,7 +260,8 @@ class MCTS<MoveType, PlayerType> {
         backpropObserver: backpropObserver,
         nnpv: nnpv,
         useValueAfterDepth: useValueAfterDepth,
-        valueThreshold: valueThreshold);
+        valueThreshold: valueThreshold,
+        random: random);
     if (rootNode == null) {
       rootNode = Node(
         gameState: gameState,
