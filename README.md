@@ -1,14 +1,12 @@
 # dartmcts
 
-A new Flutter package project.
+dartmcts is a Monte Carlo Tree Search library written in Dart. This library powers the opponents in the Trickster's Table app.
 
-## Getting Started
+Android: https://play.google.com/store/apps/details?id=app.playagame.tiger
+iOS: https://apps.apple.com/us/app/tricksters-table/id1668506875
 
-This project is a starting point for a Dart
-[package](https://flutter.dev/developing-packages/),
-a library module containing code that can be shared easily across
-multiple Flutter or Dart projects.
+Trickster's Table is funded by donations through Patreon: https://www.patreon.com/TrickstersTable and Ko-fi: https://ko-fi.com/tricksterstable 50% of donations are shared with designers/rights holders of games that appear in the app (divided by play time) and 50% of donations are used to fund the development of new games and improve existing games. By donating you can decide which games are implemented next and get your name in the credits.
 
-For help getting started with Flutter, view our 
-[online documentation](https://flutter.dev/docs), which offers tutorials, 
-samples, guidance on mobile development, and a full API reference.
+Implementations of Tic Tac Toe and Four in a Row are included as examples and for testing purposes.
+
+For a more complicated example (especially in terms of potential valid state determination) see the open sourced implementation of Magic Trick (a trick taking game designed by Chris Wray): https://github.com/dbravender/magictrick
