@@ -280,7 +280,7 @@ class MCTS<MoveType, PlayerType> {
 
     var iterationsToRun = iterations;
     if (maxSeconds != null) {
-      iterationsToRun = 9223372036854775807; // max integer value
+      iterationsToRun = 9223372; // really big integer
     }
 
     while (plays < iterationsToRun) {
