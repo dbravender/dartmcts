@@ -32,7 +32,7 @@ class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
     return TicTacToeGame(
         board:
             List.from([null, null, null, null, null, null, null, null, null]),
-        currentPlayer: TicTacToePlayer.X,
+        currentPlayer: ([TicTacToePlayer.X, TicTacToePlayer.O]..shuffle).first,
         scores: {
           TicTacToePlayer.O: 0,
           TicTacToePlayer.X: 0,
