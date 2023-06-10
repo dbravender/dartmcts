@@ -40,7 +40,6 @@ class GameWithOneMove implements GameState<Move, Player> {
 
   @override
   Map<String, dynamic> toJson() {
-    // TODO: implement toJson
     throw UnimplementedError();
   }
 }
@@ -119,7 +118,6 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
 
   @override
   Map<String, dynamic> toJson() {
-    // TODO: implement toJson
     throw UnimplementedError();
   }
 }

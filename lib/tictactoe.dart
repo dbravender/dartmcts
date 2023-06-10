@@ -1,4 +1,5 @@
 import 'package:dartmcts/dartmcts.dart';
+import 'package:dartmcts/net.dart';
 
 enum TicTacToePlayer { X, O }
 
@@ -119,5 +120,75 @@ class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
   Map<String, dynamic> toJson() {
     // TODO: implement toJson
     throw UnimplementedError();
+  }
+}
+
+List<double> legalMoves(TicTacToeGame game) {
+  List<double> l = initOneHot(9);
+  var moves = game.getMoves();
+  for (var move in moves) {
+    l[move!] = 1;
+  }
+  return l;
+}
+
+List<double> encodeGame(TicTacToeGame game) {
+  List<double> l = [];
+  List<double> myLocations = List.filled(9, 0);
+  List<double> opponentLocations = List.filled(9, 0);
+  game.board.asMap().forEach((i, player) {
+    if (player == null) return;
+    if (player == game.currentPlayer) {
+      myLocations[i] = 1;
+    } else {
+      opponentLocations[i] = 1;
+    }
+  });
+  l.addAll(myLocations);
+  l.addAll(opponentLocations);
+  // legalMoves must always be appended to the observation
+  l.addAll(legalMoves(game));
+  return l;
+}
+
+class TicTacToeNNInterface extends TrainableInterface {
+  TicTacToeGame game = TicTacToeGame.newGame() as TicTacToeGame;
+  @override
+  int get playerCount => 2;
+  @override
+  int get currentPlayer => game.currentPlayer == TicTacToePlayer.O ? 0 : 1;
+
+  @override
+  List<double> legalActions() {
+    return legalMoves(game);
+  }
+
+  @override
+  List<double> observation() {
+    return encodeGame(game);
+  }
+
+  @override
+  StepResponse step(int move) {
+    bool done = false;
+    List<double> reward = List.filled(playerCount, 0.0);
+
+    game = game.cloneAndApplyMove(move, null);
+
+    if (game.getMoves().length == 0 || game.winner != null) {
+      done = true;
+      if (game.winner == null) {
+        // tie
+        reward = [0, 0];
+      } else {
+        // clear winner - the winner gets 1.0 - everyone else gets -1.0 reward
+        reward = [-1.0, -1.0];
+        reward[game.winner! == TicTacToePlayer.O ? 0 : 1] = 1.0;
+      }
+    }
+    return StepResponse(
+      done: done,
+      reward: reward,
+    );
   }
 }

@@ -183,7 +183,7 @@ class Node<MoveType, PlayerType> {
         tiedChildren.add(x);
       }
     }
-    tiedChildren.shuffle();
+    tiedChildren.shuffle(config.random);
     return tiedChildren.first.value;
   }
 
