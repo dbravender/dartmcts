@@ -118,7 +118,7 @@ class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
 
   @override
   Map<String, dynamic> toJson() {
-    // TODO: implement toJson
+    // no need to implement this
     throw UnimplementedError();
   }
 }
@@ -156,7 +156,7 @@ class TicTacToeNNInterface extends TrainableInterface {
   @override
   int get playerCount => 2;
   @override
-  int get currentPlayer => game.currentPlayer == TicTacToePlayer.O ? 0 : 1;
+  int get currentPlayer => game.currentPlayer == TicTacToePlayer.X ? 0 : 1;
 
   @override
   List<double> legalActions() {
@@ -183,7 +183,7 @@ class TicTacToeNNInterface extends TrainableInterface {
       } else {
         // clear winner - the winner gets 1.0 - everyone else gets -1.0 reward
         reward = [-1.0, -1.0];
-        reward[game.winner! == TicTacToePlayer.O ? 0 : 1] = 1.0;
+        reward[game.winner! == TicTacToePlayer.X ? 0 : 1] = 1.0;
       }
     }
     return StepResponse(
