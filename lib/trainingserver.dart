@@ -6,12 +6,12 @@ import 'package:uuid/uuid.dart';
 
 Function? gameHandler;
 
-void serve(TrainableInterface Function() trainer) async {
+void serve(TrainableInterface Function() trainer, {int port = 5000}) async {
   var handler =
       const Pipeline().addMiddleware(logRequests()).addHandler(_handleRequest);
   gameHandler = () => trainer.call();
 
-  var server = await shelf_io.serve(handler, 'localhost', 5000);
+  var server = await shelf_io.serve(handler, 'localhost', port);
   print('Serving at http://${server.address.host}:${server.port}');
 }
 
