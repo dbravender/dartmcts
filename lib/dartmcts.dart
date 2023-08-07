@@ -35,6 +35,7 @@ class Config<MoveType, PlayerType> {
   double? valueThreshold;
   int? useValueAfterDepth;
   late Random random;
+  PlayerType Function(PlayerType)? opponentWinsShortCircuit;
 
   Config({
     double? c,
@@ -42,6 +43,7 @@ class Config<MoveType, PlayerType> {
     this.nnpv,
     this.valueThreshold,
     this.useValueAfterDepth,
+    this.opponentWinsShortCircuit,
     Random? random,
   }) {
     this.random = random ?? Random();
@@ -253,6 +255,7 @@ class MCTS<MoveType, PlayerType> {
     int? useValueAfterDepth,
     double? valueThreshold,
     Random? random,
+    PlayerType Function(PlayerType)? opponentWinsShortCircuit,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
@@ -261,7 +264,8 @@ class MCTS<MoveType, PlayerType> {
         nnpv: nnpv,
         useValueAfterDepth: useValueAfterDepth,
         valueThreshold: valueThreshold,
-        random: random);
+        random: random,
+        opponentWinsShortCircuit: opponentWinsShortCircuit);
     if (rootNode == null) {
       rootNode = Node(
         gameState: gameState,
@@ -330,6 +334,11 @@ class MCTS<MoveType, PlayerType> {
         double currentValue = currentNode.nnpvResult.value;
         if (currentValue >= config.valueThreshold!) {
           return currentNode.gameState!.currentPlayer;
+        } else {
+          if (config.opponentWinsShortCircuit != null) {
+            return config.opponentWinsShortCircuit
+                ?.call(currentNode.gameState!.currentPlayer);
+          }
         }
       }
     }
