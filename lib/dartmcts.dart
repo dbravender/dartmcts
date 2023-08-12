@@ -1,8 +1,13 @@
 library dartmcts;
 
 import 'dart:math';
+import 'dart:developer' as d;
 
 class InvalidMove implements Exception {}
+
+abstract class RewardProvider<PlayerType> {
+  Map<PlayerType, double> rewards();
+}
 
 abstract class GameState<MoveType, PlayerType> {
   GameState<MoveType, PlayerType> cloneAndApplyMove(
@@ -30,21 +35,21 @@ abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
 
 class Config<MoveType, PlayerType> {
   late double c;
-  Function? backpropObserver;
   NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv;
   double? valueThreshold;
   int? useValueAfterDepth;
   late Random random;
   PlayerType Function(PlayerType)? opponentWinsShortCircuit;
+  bool useRewards;
 
   Config({
     double? c,
-    this.backpropObserver,
     this.nnpv,
     this.valueThreshold,
     this.useValueAfterDepth,
     this.opponentWinsShortCircuit,
     Random? random,
+    this.useRewards = false,
   }) {
     this.random = random ?? Random();
     this.c = c ?? 1.41421356237; // square root of 2
@@ -58,7 +63,7 @@ class Node<MoveType, PlayerType> {
   final MoveType? move;
   int visits;
   final int depth;
-  final Map<PlayerType, int> winsByPlayer = {};
+  final Map<PlayerType, double> winsByPlayer = {};
   int draws;
   final GameState? initialState;
   bool needStateReset = false;
@@ -193,12 +198,6 @@ class Node<MoveType, PlayerType> {
     Node<MoveType, PlayerType?>? currentNode = this;
     Node<MoveType, PlayerType?>? rootNode = this;
 
-    if (config.backpropObserver != null) {
-      while (rootNode!.parent != null) {
-        rootNode = rootNode.parent;
-      }
-      config.backpropObserver!(winner, rootNode, currentNode);
-    }
     while (currentNode != null) {
       double reward = 0.0;
       if (winner == null) {
@@ -212,6 +211,25 @@ class Node<MoveType, PlayerType> {
       // Q[s][a] = (N[s][a]*Q[s][a] + v)/(N[s][a]+1)
       currentNode.q = (currentNode.visits * currentNode.q + reward) /
           (currentNode.visits + 1.0);
+      currentNode.visits += 1;
+      currentNode = currentNode.parent;
+    }
+  }
+
+  rewardBackProp(Map<PlayerType, double> rewards) {
+    Node<MoveType, PlayerType?>? currentNode = this;
+    Node<MoveType, PlayerType?>? rootNode = this;
+
+    while (currentNode != null) {
+      rewards.forEach((player, reward) {
+        currentNode?.winsByPlayer
+            .update(player, (value) => value + reward, ifAbsent: () => reward);
+      });
+      var currentPlayerReward = rewards[currentPlayer()]!;
+      // Q[s][a] = (N[s][a]*Q[s][a] + v)/(N[s][a]+1)
+      currentNode.q =
+          (currentNode.visits * currentNode.q + currentPlayerReward) /
+              (currentNode.visits + 1.0);
       currentNode.visits += 1;
       currentNode = currentNode.parent;
     }
@@ -242,9 +260,8 @@ class MCTSResult<MoveType, PlayerType> {
 
 class MCTS<MoveType, PlayerType> {
   GameState<MoveType, PlayerType>? gameState;
-  Function? backpropObserver;
 
-  MCTS({this.gameState, this.backpropObserver});
+  MCTS({this.gameState});
   MCTSResult<MoveType, PlayerType> getSimulationResult({
     Node<MoveType, PlayerType>? initialRootNode,
     int iterations = 100,
@@ -256,16 +273,18 @@ class MCTS<MoveType, PlayerType> {
     double? valueThreshold,
     Random? random,
     PlayerType Function(PlayerType)? opponentWinsShortCircuit,
+    bool useRewards = false,
+    bool resetDepth = true,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
         c: c,
-        backpropObserver: backpropObserver,
         nnpv: nnpv,
         useValueAfterDepth: useValueAfterDepth,
         valueThreshold: valueThreshold,
         random: random,
-        opponentWinsShortCircuit: opponentWinsShortCircuit);
+        opponentWinsShortCircuit: opponentWinsShortCircuit,
+        useRewards: useRewards);
     if (rootNode == null) {
       rootNode = Node(
         gameState: gameState,
@@ -289,6 +308,7 @@ class MCTS<MoveType, PlayerType> {
 
     while (plays < iterationsToRun) {
       rootNode.determine();
+      if (resetDepth) currentDepth = 0;
       if (maxSeconds != null) {
         var elapsedTime = DateTime.now().difference(startTime);
         if (elapsedTime.inSeconds > maxSeconds.toInt()) {
@@ -315,7 +335,12 @@ class MCTS<MoveType, PlayerType> {
         currentDepth += 1;
       }
 
-      currentNode.backProp(winner);
+      if (gameState is RewardProvider && config.useRewards) {
+        currentNode.rewardBackProp(
+            (gameState as RewardProvider<PlayerType>).rewards());
+      } else {
+        currentNode.backProp(winner);
+      }
       maxDepth = max(maxDepth, currentNode.depth);
     }
 
@@ -327,10 +352,27 @@ class MCTS<MoveType, PlayerType> {
 
   PlayerType? getShortcutWinner(int currentDepth, Config config,
       Node<MoveType, PlayerType?> currentNode) {
+    PlayerType? winner = null;
+    if (config.nnpv == null &&
+        config.useRewards == true &&
+        gameState is RewardProvider) {
+      if (currentDepth >= config.useValueAfterDepth!) {
+        var rewards = (gameState as RewardProvider).rewards();
+        var sortedRewards = List.from(rewards.values);
+        sortedRewards.sort();
+        var highestReward = sortedRewards.last;
+        for (var player in rewards.keys) {
+          if (highestReward == rewards[player]) {
+            return player;
+          }
+        }
+      }
+    }
     if (config.nnpv != null &&
         config.useValueAfterDepth != null &&
         config.valueThreshold != null) {
       if (currentDepth >= config.useValueAfterDepth!) {
+        d.log('currentDepth: $currentDepth');
         double currentValue = currentNode.nnpvResult.value;
         if (currentValue >= config.valueThreshold!) {
           return currentNode.gameState!.currentPlayer;
