@@ -196,7 +196,6 @@ class Node<MoveType, PlayerType> {
 
   backProp(PlayerType? winner) {
     Node<MoveType, PlayerType?>? currentNode = this;
-    Node<MoveType, PlayerType?>? rootNode = this;
 
     while (currentNode != null) {
       double reward = 0.0;
@@ -218,7 +217,6 @@ class Node<MoveType, PlayerType> {
 
   rewardBackProp(Map<PlayerType, double> rewards) {
     Node<MoveType, PlayerType?>? currentNode = this;
-    Node<MoveType, PlayerType?>? rootNode = this;
 
     while (currentNode != null) {
       rewards.forEach((player, reward) {
@@ -352,7 +350,6 @@ class MCTS<MoveType, PlayerType> {
 
   PlayerType? getShortcutWinner(int currentDepth, Config config,
       Node<MoveType, PlayerType?> currentNode) {
-    PlayerType? winner = null;
     if (config.nnpv == null &&
         config.useRewards == true &&
         gameState is RewardProvider) {
