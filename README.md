@@ -10,4 +10,3 @@ Trickster's Table is funded by donations through Patreon: https://www.patreon.co
 
 Implementations of Tic Tac Toe and Four in a Row are included as examples and for testing purposes.
 
-For a more complicated example (especially in terms of potential valid state determination) see the open sourced implementation of Magic Trick (a trick taking game designed by Chris Wray): https://github.com/dbravender/magictrick
