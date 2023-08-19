@@ -369,8 +369,9 @@ class MCTS<MoveType, PlayerType> {
         config.useValueAfterDepth != null &&
         config.valueThreshold != null) {
       if (currentDepth >= config.useValueAfterDepth!) {
-        d.log('currentDepth: $currentDepth');
+        //d.log('currentDepth: $currentDepth');
         double currentValue = currentNode.nnpvResult.value;
+        //d.log('currentValue: $currentValue');
         if (currentValue >= config.valueThreshold!) {
           return currentNode.gameState!.currentPlayer;
         } else {
