@@ -41,6 +41,8 @@ class Config<MoveType, PlayerType> {
   late Random random;
   PlayerType Function(PlayerType)? opponentWinsShortCircuit;
   bool useRewards;
+  bool backpropNNPVValue;
+  bool immediateBackpropNNPVRewards;
 
   Config({
     double? c,
@@ -50,6 +52,8 @@ class Config<MoveType, PlayerType> {
     this.opponentWinsShortCircuit,
     Random? random,
     this.useRewards = false,
+    this.backpropNNPVValue = false,
+    this.immediateBackpropNNPVRewards = false,
   }) {
     this.random = random ?? Random();
     this.c = c ?? 1.41421356237; // square root of 2
@@ -165,10 +169,6 @@ class Node<MoveType, PlayerType> {
     sortedChildren.sort((a, b) {
       var aVisits = a.value.visits;
       var bVisits = b.value.visits;
-      if (config.nnpv != null && (aVisits == 0 && bVisits == 0)) {
-        return (nnpvResult.probabilities[b.key] ?? 0)
-            .compareTo(nnpvResult.probabilities[a.key] ?? 0);
-      }
       if (aVisits == 0 && bVisits == 0) {
         return config.random.nextInt(100).compareTo(config.random.nextInt(100));
       }
@@ -217,13 +217,15 @@ class Node<MoveType, PlayerType> {
 
   rewardBackProp(Map<PlayerType, double> rewards) {
     Node<MoveType, PlayerType?>? currentNode = this;
-
     while (currentNode != null) {
       rewards.forEach((player, reward) {
-        currentNode?.winsByPlayer
-            .update(player, (value) => value + reward, ifAbsent: () => reward);
+        if (player == currentNode?.parent?.currentPlayer()) {
+          currentNode?.winsByPlayer.update(player, (value) => value + reward,
+              ifAbsent: () => reward);
+        }
       });
-      var currentPlayerReward = rewards[currentPlayer()]!;
+      var currentPlayerReward =
+          rewards[currentNode.parent?.currentPlayer()] ?? 0;
       // Q[s][a] = (N[s][a]*Q[s][a] + v)/(N[s][a]+1)
       currentNode.q =
           (currentNode.visits * currentNode.q + currentPlayerReward) /
@@ -273,16 +275,21 @@ class MCTS<MoveType, PlayerType> {
     PlayerType Function(PlayerType)? opponentWinsShortCircuit,
     bool useRewards = false,
     bool resetDepth = true,
+    bool backpropNNPVValue = false,
+    bool immediateBackpropNNPVRewards = false,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
-        c: c,
-        nnpv: nnpv,
-        useValueAfterDepth: useValueAfterDepth,
-        valueThreshold: valueThreshold,
-        random: random,
-        opponentWinsShortCircuit: opponentWinsShortCircuit,
-        useRewards: useRewards);
+      c: c,
+      nnpv: nnpv,
+      useValueAfterDepth: useValueAfterDepth,
+      valueThreshold: valueThreshold,
+      random: random,
+      opponentWinsShortCircuit: opponentWinsShortCircuit,
+      useRewards: useRewards,
+      backpropNNPVValue: backpropNNPVValue,
+      immediateBackpropNNPVRewards: immediateBackpropNNPVRewards,
+    );
     if (rootNode == null) {
       rootNode = Node(
         gameState: gameState,
@@ -306,6 +313,7 @@ class MCTS<MoveType, PlayerType> {
 
     while (plays < iterationsToRun) {
       rootNode.determine();
+      Map<PlayerType, double> nnpvRewards = {};
       if (resetDepth) currentDepth = 0;
       if (maxSeconds != null) {
         var elapsedTime = DateTime.now().difference(startTime);
@@ -322,8 +330,16 @@ class MCTS<MoveType, PlayerType> {
           currentNode.gameState?.winner == null) {
         currentNode = currentNode.getBestChild();
         currentNode.resetState();
+        if (config.nnpv != null &&
+            currentNode.parent?.currentPlayer() != null) {
+          nnpvRewards[currentNode.parent!.currentPlayer()!] =
+              currentNode.nnpvResult.value;
+        }
         if (currentNode.gameState?.winner != null) {
           winner = currentNode.gameState?.winner;
+          break;
+        }
+        if (config.immediateBackpropNNPVRewards && currentNode.visits == 0) {
           break;
         }
         winner = getShortcutWinner(currentDepth, config, currentNode);
@@ -333,9 +349,13 @@ class MCTS<MoveType, PlayerType> {
         currentDepth += 1;
       }
 
-      if (gameState is RewardProvider && config.useRewards) {
+      if (config.immediateBackpropNNPVRewards && currentNode.visits == 0) {
+        currentNode.rewardBackProp(nnpvRewards);
+      } else if (gameState is RewardProvider && config.useRewards) {
         currentNode.rewardBackProp(
             (gameState as RewardProvider<PlayerType>).rewards());
+      } else if (config.backpropNNPVValue) {
+        currentNode.rewardBackProp(nnpvRewards);
       } else {
         currentNode.backProp(winner);
       }
@@ -343,7 +363,7 @@ class MCTS<MoveType, PlayerType> {
     }
 
     var selectedMove = rootNode.getMostVisitedChild(actualMoves).move;
-
+    assert(actualMoves?.contains(selectedMove) != false);
     return MCTSResult(
         root: rootNode, move: selectedMove, maxDepth: maxDepth, plays: plays);
   }
