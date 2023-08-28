@@ -1,7 +1,6 @@
 library dartmcts;
 
 import 'dart:math';
-import 'dart:developer' as d;
 
 class InvalidMove implements Exception {}
 
@@ -251,6 +250,7 @@ class Node<MoveType, PlayerType> {
 
 class MCTSResult<MoveType, PlayerType> {
   final Node<MoveType, PlayerType>? root;
+  final List<Node<MoveType, PlayerType>>? roots;
   final MoveType? move;
   final List<Node<MoveType, PlayerType>>? leafNodes;
   final int? maxDepth;
@@ -258,6 +258,7 @@ class MCTSResult<MoveType, PlayerType> {
   final int nodesVisited;
   MCTSResult(
       {this.root,
+      this.roots = null,
       this.move,
       this.leafNodes,
       this.maxDepth,
@@ -284,6 +285,9 @@ class MCTS<MoveType, PlayerType> {
     bool resetDepth = true,
     bool backpropNNPVValue = false,
     bool immediateBackpropNNPVRewards = false,
+    int redetermineStep =
+        0, // determine every time by default (previous behavior)
+    bool returnRootPerDetermination = false,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
