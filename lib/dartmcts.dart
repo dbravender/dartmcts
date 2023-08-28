@@ -63,7 +63,7 @@ class Config<MoveType, PlayerType> {
 class Node<MoveType, PlayerType> {
   GameState<MoveType?, PlayerType?>? gameState;
   Node<MoveType, PlayerType>? root;
-  final Node<MoveType, PlayerType>? parent;
+  Node<MoveType, PlayerType>? parent;
   final MoveType? move;
   int visits;
   final int depth;
@@ -115,7 +115,7 @@ class Node<MoveType, PlayerType> {
     }
   }
 
-  Map<MoveType?, Node<MoveType, PlayerType?>> get children {
+  Map<MoveType?, Node<MoveType, PlayerType>> get children {
     // This GameState might not be selected during a simulation so we only generate
     // the children when necessary
     if (_children.isEmpty || needStateReset) {
@@ -164,7 +164,7 @@ class Node<MoveType, PlayerType> {
   }
 
   Node<MoveType, PlayerType?> getBestChild() {
-    var player = currentPlayer();
+    var player = currentPlayer()!;
     var sortedChildren = children.entries.toList();
     sortedChildren.sort((a, b) {
       var aVisits = a.value.visits;
@@ -255,7 +255,14 @@ class MCTSResult<MoveType, PlayerType> {
   final List<Node<MoveType, PlayerType>>? leafNodes;
   final int? maxDepth;
   final int? plays;
-  MCTSResult({this.root, this.move, this.leafNodes, this.maxDepth, this.plays});
+  final int nodesVisited;
+  MCTSResult(
+      {this.root,
+      this.move,
+      this.leafNodes,
+      this.maxDepth,
+      this.plays,
+      this.nodesVisited = 0});
 }
 
 class MCTS<MoveType, PlayerType> {
@@ -298,8 +305,10 @@ class MCTS<MoveType, PlayerType> {
         config: config,
       );
     } else {
+      rootNode.parent = null;
       rootNode.resetState();
     }
+    int nodesVisited = 0;
     rootNode.config = config;
     var plays = 0;
     var maxDepth = 0;
@@ -328,6 +337,7 @@ class MCTS<MoveType, PlayerType> {
 
       while (currentNode.children.length > 0 &&
           currentNode.gameState?.winner == null) {
+        nodesVisited++;
         currentNode = currentNode.getBestChild();
         currentNode.resetState();
         if (config.nnpv != null &&
@@ -365,7 +375,11 @@ class MCTS<MoveType, PlayerType> {
     var selectedMove = rootNode.getMostVisitedChild(actualMoves).move;
     assert(actualMoves?.contains(selectedMove) != false);
     return MCTSResult(
-        root: rootNode, move: selectedMove, maxDepth: maxDepth, plays: plays);
+        root: rootNode,
+        move: selectedMove,
+        maxDepth: maxDepth,
+        plays: plays,
+        nodesVisited: nodesVisited);
   }
 
   PlayerType? getShortcutWinner(int currentDepth, Config config,
