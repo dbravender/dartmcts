@@ -36,9 +36,7 @@ class Config<MoveType, PlayerType> {
   late double c;
   NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv;
   double? valueThreshold;
-  int? useValueAfterDepth;
   late Random random;
-  PlayerType Function(PlayerType)? opponentWinsShortCircuit;
   bool useRewards;
   bool backpropNNPVValue;
   bool immediateBackpropNNPVRewards;
@@ -46,9 +44,6 @@ class Config<MoveType, PlayerType> {
   Config({
     double? c,
     this.nnpv,
-    this.valueThreshold,
-    this.useValueAfterDepth,
-    this.opponentWinsShortCircuit,
     Random? random,
     this.useRewards = false,
     this.backpropNNPVValue = false,
@@ -277,27 +272,18 @@ class MCTS<MoveType, PlayerType> {
     List<MoveType>? actualMoves,
     NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv,
     double? c,
-    int? useValueAfterDepth,
-    double? valueThreshold,
     Random? random,
     PlayerType Function(PlayerType)? opponentWinsShortCircuit,
-    bool useRewards = false,
-    bool resetDepth = true,
     bool backpropNNPVValue = false,
     bool immediateBackpropNNPVRewards = false,
     int redetermineStep =
         0, // determine every time by default (previous behavior)
-    bool returnRootPerDetermination = false,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
       c: c,
       nnpv: nnpv,
-      useValueAfterDepth: useValueAfterDepth,
-      valueThreshold: valueThreshold,
       random: random,
-      opponentWinsShortCircuit: opponentWinsShortCircuit,
-      useRewards: useRewards,
       backpropNNPVValue: backpropNNPVValue,
       immediateBackpropNNPVRewards: immediateBackpropNNPVRewards,
     );
@@ -316,7 +302,6 @@ class MCTS<MoveType, PlayerType> {
     rootNode.config = config;
     var plays = 0;
     var maxDepth = 0;
-    var currentDepth = 0;
     var startTime = DateTime.now();
 
     var iterationsToRun = iterations;
@@ -327,7 +312,7 @@ class MCTS<MoveType, PlayerType> {
     while (plays < iterationsToRun) {
       rootNode.determine();
       Map<PlayerType, double> nnpvRewards = {};
-      if (resetDepth) currentDepth = 0;
+      currentDepth = 0;
       if (maxSeconds != null) {
         var elapsedTime = DateTime.now().difference(startTime);
         if (elapsedTime.inSeconds > maxSeconds.toInt()) {
@@ -356,18 +341,10 @@ class MCTS<MoveType, PlayerType> {
         if (config.immediateBackpropNNPVRewards && currentNode.visits == 0) {
           break;
         }
-        winner = getShortcutWinner(currentDepth, config, currentNode);
-        if (winner != null) {
-          break;
-        }
-        currentDepth += 1;
       }
 
       if (config.immediateBackpropNNPVRewards && currentNode.visits == 0) {
         currentNode.rewardBackProp(nnpvRewards);
-      } else if (gameState is RewardProvider && config.useRewards) {
-        currentNode.rewardBackProp(
-            (gameState as RewardProvider<PlayerType>).rewards());
       } else if (config.backpropNNPVValue) {
         currentNode.rewardBackProp(nnpvRewards);
       } else {
@@ -384,42 +361,5 @@ class MCTS<MoveType, PlayerType> {
         maxDepth: maxDepth,
         plays: plays,
         nodesVisited: nodesVisited);
-  }
-
-  PlayerType? getShortcutWinner(int currentDepth, Config config,
-      Node<MoveType, PlayerType?> currentNode) {
-    if (config.nnpv == null &&
-        config.useRewards == true &&
-        gameState is RewardProvider) {
-      if (currentDepth >= config.useValueAfterDepth!) {
-        var rewards = (gameState as RewardProvider).rewards();
-        var sortedRewards = List.from(rewards.values);
-        sortedRewards.sort();
-        var highestReward = sortedRewards.last;
-        for (var player in rewards.keys) {
-          if (highestReward == rewards[player]) {
-            return player;
-          }
-        }
-      }
-    }
-    if (config.nnpv != null &&
-        config.useValueAfterDepth != null &&
-        config.valueThreshold != null) {
-      if (currentDepth >= config.useValueAfterDepth!) {
-        //d.log('currentDepth: $currentDepth');
-        double currentValue = currentNode.nnpvResult.value;
-        //d.log('currentValue: $currentValue');
-        if (currentValue >= config.valueThreshold!) {
-          return currentNode.gameState!.currentPlayer;
-        } else {
-          if (config.opponentWinsShortCircuit != null) {
-            return config.opponentWinsShortCircuit
-                ?.call(currentNode.gameState!.currentPlayer);
-          }
-        }
-      }
-    }
-    return null;
   }
 }
