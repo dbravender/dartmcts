@@ -37,17 +37,17 @@ class Config<MoveType, PlayerType> {
   NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv;
   double? valueThreshold;
   late Random random;
-  bool useRewards;
   bool backpropNNPVValue;
   bool immediateBackpropNNPVRewards;
+  bool setqToValueFirstVisit;
 
   Config({
     double? c,
     this.nnpv,
     Random? random,
-    this.useRewards = false,
-    this.backpropNNPVValue = false,
-    this.immediateBackpropNNPVRewards = false,
+    this.backpropNNPVValue = true,
+    this.immediateBackpropNNPVRewards = true,
+    this.setqToValueFirstVisit = true,
   }) {
     this.random = random ?? Random();
     this.c = c ?? 1.41421356237; // square root of 2
@@ -245,7 +245,6 @@ class Node<MoveType, PlayerType> {
 
 class MCTSResult<MoveType, PlayerType> {
   final Node<MoveType, PlayerType>? root;
-  final List<Node<MoveType, PlayerType>>? roots;
   final MoveType? move;
   final List<Node<MoveType, PlayerType>>? leafNodes;
   final int? maxDepth;
@@ -253,7 +252,6 @@ class MCTSResult<MoveType, PlayerType> {
   final int nodesVisited;
   MCTSResult(
       {this.root,
-      this.roots = null,
       this.move,
       this.leafNodes,
       this.maxDepth,
@@ -276,8 +274,7 @@ class MCTS<MoveType, PlayerType> {
     PlayerType Function(PlayerType)? opponentWinsShortCircuit,
     bool backpropNNPVValue = false,
     bool immediateBackpropNNPVRewards = false,
-    int redetermineStep =
-        0, // determine every time by default (previous behavior)
+    bool setqToValueFirstVisit = false,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
@@ -286,6 +283,7 @@ class MCTS<MoveType, PlayerType> {
       random: random,
       backpropNNPVValue: backpropNNPVValue,
       immediateBackpropNNPVRewards: immediateBackpropNNPVRewards,
+      setqToValueFirstVisit: setqToValueFirstVisit,
     );
     if (rootNode == null) {
       rootNode = Node(
@@ -312,7 +310,6 @@ class MCTS<MoveType, PlayerType> {
     while (plays < iterationsToRun) {
       rootNode.determine();
       Map<PlayerType, double> nnpvRewards = {};
-      currentDepth = 0;
       if (maxSeconds != null) {
         var elapsedTime = DateTime.now().difference(startTime);
         if (elapsedTime.inSeconds > maxSeconds.toInt()) {
@@ -345,6 +342,8 @@ class MCTS<MoveType, PlayerType> {
 
       if (config.immediateBackpropNNPVRewards && currentNode.visits == 0) {
         currentNode.rewardBackProp(nnpvRewards);
+        if (config.setqToValueFirstVisit)
+          currentNode.q = currentNode.nnpvResult.value;
       } else if (config.backpropNNPVValue) {
         currentNode.rewardBackProp(nnpvRewards);
       } else {
