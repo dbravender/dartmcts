@@ -330,6 +330,8 @@ class MCTS<MoveType, PlayerType> {
         }
         if (currentNode.gameState?.winner != null) {
           winner = currentNode.gameState?.winner;
+          nnpvRewards[currentNode.gameState!.winner!] =
+              1 + (nnpvRewards[currentNode.gameState!.winner!] ?? 0);
           break;
         }
         if (config.immediateBackpropNNPVRewards && currentNode.visits == 0) {
