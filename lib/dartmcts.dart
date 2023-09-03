@@ -119,7 +119,7 @@ class Node<MoveType, PlayerType> {
       }
     }
     var moves = gameState!.getMoves().toSet();
-    addNewChildrenForDetermination(moves);
+    addNewChildrenForDetermination(moves.toList());
     return Map.fromEntries(
         _children.entries.where((x) => moves.contains(x.value.move)));
   }
