@@ -39,6 +39,7 @@ class Config<MoveType, PlayerType> {
   late Random random;
   bool backpropNNPVValue;
   bool immediateBackpropNNPVRewards;
+  bool setQsFromNN;
 
   Config({
     double? c,
@@ -46,6 +47,7 @@ class Config<MoveType, PlayerType> {
     Random? random,
     this.backpropNNPVValue = true,
     this.immediateBackpropNNPVRewards = true,
+    this.setQsFromNN = false,
   }) {
     this.random = random ?? Random();
     this.c = c ?? 1.41421356237; // square root of 2
@@ -97,7 +99,7 @@ class Node<MoveType, PlayerType> {
       if (_children.containsKey(move)) {
         continue;
       }
-      _children[move] = Node(
+      var node = Node(
         gameState: gameState,
         config: config,
         move: move,
@@ -105,6 +107,10 @@ class Node<MoveType, PlayerType> {
         root: root,
         depth: depth + 1,
       );
+      if (config.setQsFromNN) {
+        node.q = nnpvResult.qs[move]!;
+      }
+      _children[move] = node;
     }
   }
 
@@ -117,7 +123,7 @@ class Node<MoveType, PlayerType> {
             as GameState<MoveType?, PlayerType?>?;
       }
     }
-    var moves = gameState!.getMoves();
+    var moves = gameState!.getMoves().toSet();
     addNewChildrenForDetermination(moves);
     return Map.fromEntries(
         _children.entries.where((x) => moves.contains(x.value.move)));
@@ -272,6 +278,7 @@ class MCTS<MoveType, PlayerType> {
     Random? random,
     bool backpropNNPVValue = false,
     bool immediateBackpropNNPVRewards = false,
+    bool setQsFromNN = false,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
@@ -280,6 +287,7 @@ class MCTS<MoveType, PlayerType> {
       random: random,
       backpropNNPVValue: backpropNNPVValue,
       immediateBackpropNNPVRewards: immediateBackpropNNPVRewards,
+      setQsFromNN: setQsFromNN,
     );
     if (rootNode == null) {
       rootNode = Node(
