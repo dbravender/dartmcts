@@ -17,6 +17,7 @@ abstract class GameState<MoveType, PlayerType> {
   PlayerType? winner;
   PlayerType? currentPlayer;
   Map<String, dynamic> toJson();
+  Random? random;
 }
 
 class NNPVResult<MoveType> {
@@ -35,11 +36,9 @@ abstract class NeuralNetworkPolicyAndValue<MoveType, PlayerType> {
 class Config<MoveType, PlayerType> {
   late double c;
   NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv;
-  double? valueThreshold;
   late Random random;
   bool backpropNNPVValue;
   bool immediateBackpropNNPVRewards;
-  bool setqToValueFirstVisit;
 
   Config({
     double? c,
@@ -47,7 +46,6 @@ class Config<MoveType, PlayerType> {
     Random? random,
     this.backpropNNPVValue = true,
     this.immediateBackpropNNPVRewards = true,
-    this.setqToValueFirstVisit = true,
   }) {
     this.random = random ?? Random();
     this.c = c ?? 1.41421356237; // square root of 2
@@ -82,6 +80,7 @@ class Node<MoveType, PlayerType> {
     this.q = 0,
   }) : initialState = gameState {
     this.root ??= this;
+    gameState!.random = this.config.random;
   }
 
   determine() {
@@ -273,7 +272,6 @@ class MCTS<MoveType, PlayerType> {
     Random? random,
     bool backpropNNPVValue = false,
     bool immediateBackpropNNPVRewards = false,
-    bool setqToValueFirstVisit = false,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
@@ -282,7 +280,6 @@ class MCTS<MoveType, PlayerType> {
       random: random,
       backpropNNPVValue: backpropNNPVValue,
       immediateBackpropNNPVRewards: immediateBackpropNNPVRewards,
-      setqToValueFirstVisit: setqToValueFirstVisit,
     );
     if (rootNode == null) {
       rootNode = Node(
@@ -341,8 +338,6 @@ class MCTS<MoveType, PlayerType> {
 
       if (config.immediateBackpropNNPVRewards && currentNode.visits == 0) {
         currentNode.rewardBackProp(nnpvRewards);
-        if (config.setqToValueFirstVisit)
-          currentNode.q = currentNode.nnpvResult.value;
       } else if (config.backpropNNPVValue) {
         currentNode.rewardBackProp(nnpvRewards);
       } else {
