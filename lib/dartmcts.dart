@@ -271,7 +271,6 @@ class MCTS<MoveType, PlayerType> {
     NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv,
     double? c,
     Random? random,
-    PlayerType Function(PlayerType)? opponentWinsShortCircuit,
     bool backpropNNPVValue = false,
     bool immediateBackpropNNPVRewards = false,
     bool setqToValueFirstVisit = false,
