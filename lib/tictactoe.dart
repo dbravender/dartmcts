@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:dartmcts/dartmcts.dart';
 import 'package:dartmcts/net.dart';
 
@@ -15,6 +16,7 @@ final List<List<int>> checks = [
 ];
 
 class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
+  Random? random;
   List<TicTacToePlayer?> board = [];
   TicTacToePlayer? currentPlayer;
   TicTacToePlayer? winner;

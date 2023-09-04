@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:dartmcts/dartmcts.dart';
 
 const List<List<int>> bitboardLookup = [
@@ -70,6 +71,7 @@ int findRowForColumn(Board board, int column) {
 }
 
 class ConnectFourGame implements GameState<Move, Player> {
+  Random? random;
   Player? currentPlayer;
   Map<Player, int> bitboards;
   Board board;

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:test/test.dart';
 
 import 'package:dartmcts/dartmcts.dart';
@@ -8,6 +9,7 @@ enum Player { FIRST, SECOND }
 enum Move { WIN }
 
 class GameWithOneMove implements GameState<Move, Player> {
+  Random? random;
   Player? currentPlayer;
   Player? winner;
   Map<Player, int> scores = {};
@@ -47,6 +49,7 @@ class GameWithOneMove implements GameState<Move, Player> {
 enum ScoringMove { SCORE_5, SCORE_10, SCORE_100 }
 
 class GameWithScore implements GameState<ScoringMove, Player?> {
+  Random? random;
   Player? currentPlayer = Player.FIRST;
   Map<Player?, int> scores = {Player.FIRST: 0, Player.SECOND: 0};
   Player? winner;
@@ -151,7 +154,7 @@ void main() {
     var game = GameWithOneMove(scores: {});
     expect(game.getMoves(), equals([Move.WIN]));
     var result = MCTS(gameState: GameWithOneMove(scores: {}))
-        .getSimulationResult(iterations: 10);
+        .getSimulationResult(iterations: 10, random: Random(123));
     expect(result.move, equals(Move.WIN));
     expect(
         result.root!.children.values.first.getWinner(), equals(Player.FIRST));
@@ -164,10 +167,10 @@ void main() {
         board: [o, o, e, x, e, x, e, x, e], currentPlayer: o, scores: {});
     MCTSResult<int?, TicTacToePlayer> result =
         MCTS(gameState: oneMoveFromWinning)
-            .getSimulationResult(iterations: 100);
+            .getSimulationResult(iterations: 100, random: Random(123));
     expect(result.root!.children.length, equals(4));
     expect(result.move, equals(2));
-    expect(result.maxDepth, equals(4));
+    expect(result.maxDepth, equals(3));
   });
   test('selects winning tic tac toe move (scenario 2)', () {
     var o = TicTacToePlayer.O;
@@ -177,9 +180,9 @@ void main() {
         board: [o, e, e, o, x, x, e, x, e], currentPlayer: o, scores: {});
     MCTSResult<int?, TicTacToePlayer> result =
         MCTS(gameState: oneMoveFromWinning)
-            .getSimulationResult(iterations: 100);
+            .getSimulationResult(iterations: 100, random: Random(123));
     expect(result.root!.children.length, equals(4));
-    expect(result.maxDepth, equals(4));
+    expect(result.maxDepth, equals(3));
     expect(result.move, equals(6));
   });
   test('plays out a game from start to finish', () {
@@ -196,8 +199,8 @@ void main() {
       'game with a score selects high scoring moves more frequently than low scoring moves',
       () {
     var gameState = GameWithScore(scores: {Player.FIRST: 0, Player.SECOND: 0});
-    MCTSResult<ScoringMove, Player?> result =
-        MCTS(gameState: gameState).getSimulationResult(iterations: 100);
+    MCTSResult<ScoringMove, Player?> result = MCTS(gameState: gameState)
+        .getSimulationResult(iterations: 100, random: Random(123));
     expect(result.root!.children.length, equals(3));
     expect(result.move, equals(ScoringMove.SCORE_100));
     expect(result.root!.children[ScoringMove.SCORE_100]?.visits ?? 0,
@@ -211,9 +214,10 @@ void main() {
     var ttgg = TicTacToeGame(
         board: [e, e, e, e, e, e, e, e, e], currentPlayer: o, scores: {});
     MCTSResult<int?, TicTacToePlayer> result = MCTS(gameState: ttgg)
-        .getSimulationResult(iterations: 100, nnpv: TestNNPV());
+        .getSimulationResult(
+            iterations: 100, nnpv: TestNNPV(), random: Random(123));
     expect(result.root!.children.length, equals(9));
-    expect(result.maxDepth, equals(9));
+    expect(result.maxDepth, equals(3));
     Map<int?, int> visits = {};
     result.root!.children.forEach((key, value) {
       visits[value.move] = value.visits;
@@ -221,7 +225,8 @@ void main() {
     print(visits);
     ttgg = TicTacToeGame(
         board: [e, e, e, e, e, e, e, e, e], currentPlayer: o, scores: {});
-    result = MCTS(gameState: ttgg).getSimulationResult(iterations: 100);
+    result = MCTS(gameState: ttgg)
+        .getSimulationResult(iterations: 100, random: Random(123));
     result.root!.children.forEach((key, value) {
       visits[value.move] = value.visits;
     });
