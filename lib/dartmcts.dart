@@ -271,8 +271,8 @@ class MCTS<MoveType, PlayerType> {
     NeuralNetworkPolicyAndValue<MoveType, PlayerType>? nnpv,
     double? c,
     Random? random,
-    bool backpropNNPVValue = false,
-    bool immediateBackpropNNPVRewards = false,
+    bool backpropNNPVValue = true,
+    bool immediateBackpropNNPVRewards = true,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
