@@ -9,4 +9,4 @@ environment:
 dev_dependencies:
   test: ^1.24.3
 dependencies:
-  uuid: ^3.0.7
+  uuid: ^4.0.0
