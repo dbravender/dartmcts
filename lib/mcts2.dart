@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:dartmcts/dartmcts.dart';
 import 'dart:developer' as d;
 
+const tieTolerance = 1e-5;
 const EPS = 1e-8;
 
 class SA {
@@ -50,50 +51,26 @@ class MCTSNNTree {
       this.random,
       this.cpuct = 1.0});
 
-  int getBestMove(GameState<int, int> game, {bool byVisits = false}) {
+  int getBestMove(GameState<int, int> game) {
     /// Runs all playouts sequentially and returns the most visited action.
     /// Returns:
     ///    bestAction: the action with the highest visit count
 
     var probabilities = getActionProb(game, temp: 0);
 
-    if (byVisits) {
-      var validMoves = game.getMoves().toSet();
-      List<int> visits = Iterable<int>.generate(game.actionSize)
-          .map((a) => Nsa[SA(game.id, a)] ?? 0)
-          .toList();
-      int maxVisits = visits.reduce(max);
-      List<int> bestAs = visits
-          .asMap()
-          .entries
-          .map((entry) {
-            if (!validMoves.contains(entry.key)) {
-              return null;
-            }
-            if (entry.value == maxVisits)
-              return entry.key;
-            else
-              return null;
-          })
-          .whereType<int>()
-          .toList();
-      bestAs.shuffle(random);
-      return bestAs.first;
-    } else {
-      double maxScore = probabilities.reduce(max);
-      List<int> bestAs = probabilities
-          .asMap()
-          .entries
-          .map((entry) {
-            if (entry.value == maxScore)
-              return entry.key;
-            else
-              return null;
-          })
-          .whereType<int>()
-          .toList();
-      return bestAs.first;
-    }
+    double maxScore = probabilities.reduce(max);
+    List<int> bestAs = probabilities
+        .asMap()
+        .entries
+        .map((entry) {
+          if (entry.value == maxScore)
+            return entry.key;
+          else
+            return null;
+        })
+        .whereType<int>()
+        .toList();
+    return bestAs.first;
   }
 
   List<double> getActionProb(GameState<int, int> game, {temp = 1}) {
@@ -134,12 +111,14 @@ class MCTSNNTree {
       int bestA = bestAs.first;
       List<double> probs = List.filled(game.actionSize, 0);
       probs[bestA] = 1;
+      // print(probs);
       return probs;
     }
 
     counts = counts.map((x) => pow(x, (1.0 / temp)).toDouble()).toList();
     double countsSum = counts.reduce((x, y) => x + y);
-    return [for (var x in counts) x / countsSum];
+    counts = [for (var x in counts) x / countsSum];
+    return counts;
   }
 
   double search(GameState<int, int> game) {
@@ -167,7 +146,7 @@ class MCTSNNTree {
         Es[s] = 0;
       } else {
         // FIXME - hardcoding for Yokai 2p testrun
-        Es[s] = (game.currentPlayer == 0 ? 1 : -1);
+        Es[s] = (parent[s]!.currentPlayer == 0 ? -1 : 1);
       }
     }
     if (Es[s] != 0) {
@@ -230,7 +209,9 @@ class MCTSNNTree {
     var a = bestAction;
 
     if (!GamesSa.containsKey(SA(s, a))) {
-      GamesSa[SA(s, a)] = game.cloneAndApplyMove(a, null);
+      var newGame = game.cloneAndApplyMove(a, null);
+      GamesSa[SA(s, a)] = newGame;
+      parent[newGame.id] = game;
     }
 
     double v = search(GamesSa[SA(s, a)]!);
@@ -246,6 +227,6 @@ class MCTSNNTree {
 
     Ns[s] = (Ns[s] ?? 0) + 1;
     // FIXME - hardcoding for Yokai 2p testrun
-    return v * (game.currentPlayer == 0 ? 1 : -1);
+    return v; // * (parent[s]!.currentPlayer == 0 ? 1 : -1);
   }
 }
