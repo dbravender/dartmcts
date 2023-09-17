@@ -2,6 +2,14 @@ library dartmcts;
 
 import 'dart:math';
 
+int _id = 0;
+
+/// Used to get the next GameState ID
+int getNextId() {
+  _id += 1;
+  return _id;
+}
+
 class InvalidMove implements Exception {}
 
 abstract class RewardProvider<PlayerType> {
@@ -18,6 +26,8 @@ abstract class GameState<MoveType, PlayerType> {
   PlayerType? currentPlayer;
   Map<String, dynamic> toJson();
   Random? random;
+  int id = 0;
+  int actionSize = 0;
 }
 
 class NNPVResult<MoveType> {
