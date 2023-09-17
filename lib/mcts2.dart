@@ -3,9 +3,6 @@ import 'dart:math';
 import 'package:dartmcts/dartmcts.dart';
 import 'dart:developer' as d;
 
-const tieTolerance = 1e-5;
-const EPS = 1e-8;
-
 class SA {
   int s;
   int a;
@@ -34,6 +31,8 @@ class MCTSNNTree {
   int simulationCount;
   double cpuct;
   GameState<int, int> game;
+  double tieTolerance;
+  double EPS;
   NeuralNetworkPolicyAndValue<int, int> nnpv;
   Map<SA, double> Qsa = {}; // stores Q values for s,a (as defined in the paper)
   Map<SA, int> Nsa = {}; // stores #times edge s,a was visited
@@ -42,14 +41,17 @@ class MCTSNNTree {
       {}; // stores initial policy (returned by neural net)
 
   Map<int, double> Es = {}; // stores game.getGameEnded ended for board s
-  Map<int, List<int>> Vs = {}; // stores game.getValidMoves for board s
+  Map<int, Set<int>> Vs = {}; // stores game.getValidMoves for board s
 
-  MCTSNNTree(
-      {required this.game,
-      required this.nnpv,
-      this.simulationCount = 100,
-      this.random,
-      this.cpuct = 1.0});
+  MCTSNNTree({
+    required this.game,
+    required this.nnpv,
+    this.simulationCount = 100,
+    this.random,
+    this.cpuct = 1.0,
+    this.tieTolerance = 1e-5,
+    this.EPS = 1e-8,
+  });
 
   int getBestMove(GameState<int, int> game) {
     /// Runs all playouts sequentially and returns the most visited action.
@@ -63,7 +65,7 @@ class MCTSNNTree {
         .asMap()
         .entries
         .map((entry) {
-          if (entry.value == maxScore)
+          if (entry.value >= maxScore - tieTolerance)
             return entry.key;
           else
             return null;
@@ -100,7 +102,7 @@ class MCTSNNTree {
             if (!validMoves.contains(entry.key)) {
               return null;
             }
-            if (entry.value == maxScore)
+            if (entry.value >= maxScore - tieTolerance)
               return entry.key;
             else
               return null;
@@ -111,7 +113,6 @@ class MCTSNNTree {
       int bestA = bestAs.first;
       List<double> probs = List.filled(game.actionSize, 0);
       probs[bestA] = 1;
-      // print(probs);
       return probs;
     }
 
@@ -158,9 +159,11 @@ class MCTSNNTree {
       // leaf node
       NNPVResult nnpvResult = nnpv.getResult(game);
       Ps[s] = List.filled(game.actionSize, 0.0);
-      var validMoves = game.getMoves();
+      var validMoves = game.getMoves().toSet();
       for (var MapEntry(key: moveId, value: probability)
           in nnpvResult.probabilities.entries) {
+        // Intentionally not filtering out invalid moves for games with
+        // determined states
         Ps[s]![moveId] = probability;
       }
       double sumPss = Ps[s]!.reduce((x, y) => x + y);
@@ -186,7 +189,7 @@ class MCTSNNTree {
       return nnpvResult.value * (game.currentPlayer == 1 ? 1 : -1);
     }
 
-    List<int> validMoves = Vs[s]!;
+    Set<int> validMoves = Vs[s]!;
     double currentBest = double.negativeInfinity;
     int bestAction = -1;
 
