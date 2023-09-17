@@ -4,8 +4,8 @@ import 'package:dartmcts/dartmcts.dart';
 import 'dart:developer' as d;
 
 class SA {
-  int s;
-  int a;
+  final int s;
+  final int a;
 
   SA(this.s, this.a);
 
