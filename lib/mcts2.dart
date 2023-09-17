@@ -13,12 +13,21 @@ class SA {
 
   @override
   int get hashCode => Object.hash(s, a);
+
+  @override
+  operator ==(Object other) {
+    if (other is SA) {
+      return s == other.s && a == other.a;
+    }
+    return false;
+  }
 }
 
 // To keep things simple this MCTS implementation will assume that players and
 // moves are represented by integers
 
 class MCTSNNTree {
+  Map<int, GameState<int, int>> parent = {};
   Map<SA, GameState<int, int>> GamesSa = {};
   Random? random;
   int simulationCount;
@@ -41,7 +50,53 @@ class MCTSNNTree {
       this.random,
       this.cpuct = 1.0});
 
-  List<double> getActionProb(self, GameState<int, int> game, {temp = 1}) {
+  int getBestMove(GameState<int, int> game, {bool byVisits = false}) {
+    /// Runs all playouts sequentially and returns the most visited action.
+    /// Returns:
+    ///    bestAction: the action with the highest visit count
+
+    var probabilities = getActionProb(game, temp: 0);
+
+    if (byVisits) {
+      var validMoves = game.getMoves().toSet();
+      List<int> visits = Iterable<int>.generate(game.actionSize)
+          .map((a) => Nsa[SA(game.id, a)] ?? 0)
+          .toList();
+      int maxVisits = visits.reduce(max);
+      List<int> bestAs = visits
+          .asMap()
+          .entries
+          .map((entry) {
+            if (!validMoves.contains(entry.key)) {
+              return null;
+            }
+            if (entry.value == maxVisits)
+              return entry.key;
+            else
+              return null;
+          })
+          .whereType<int>()
+          .toList();
+      bestAs.shuffle(random);
+      return bestAs.first;
+    } else {
+      double maxScore = probabilities.reduce(max);
+      List<int> bestAs = probabilities
+          .asMap()
+          .entries
+          .map((entry) {
+            if (entry.value == maxScore)
+              return entry.key;
+            else
+              return null;
+          })
+          .whereType<int>()
+          .toList();
+      return bestAs.first;
+    }
+  }
+
+  List<double> getActionProb(GameState<int, int> game, {temp = 1}) {
     /// This function performs numMCTSSims simulations of MCTS starting from
     /// canonicalBoard.
     /// Returns:
@@ -57,12 +112,17 @@ class MCTSNNTree {
         Nsa[SA(s, a)]?.toDouble() ?? 0.0
     ];
 
+    var validMoves = game.getMoves().toSet();
+
     if (temp == 0) {
       double maxScore = counts.reduce(max).toDouble();
       List<int> bestAs = counts
           .asMap()
           .entries
           .map((entry) {
+            if (!validMoves.contains(entry.key)) {
+              return null;
+            }
             if (entry.value == maxScore)
               return entry.key;
             else
@@ -103,9 +163,12 @@ class MCTSNNTree {
     int s = game.id;
 
     if (!Es.containsKey(s)) {
-      Es[s] = (game.winner != null && game.winner != game.currentPlayer)
-          ? 1.0
-          : -1.0;
+      if (game.winner == null) {
+        Es[s] = 0;
+      } else {
+        // FIXME - hardcoding for Yokai 2p testrun
+        Es[s] = (game.currentPlayer == 0 ? 1 : -1);
+      }
     }
     if (Es[s] != 0) {
       // terminal node
@@ -140,7 +203,8 @@ class MCTSNNTree {
       }
       Vs[s] = validMoves;
       Ns[s] = 0;
-      return -nnpvResult.value;
+      // FIXME - hardcoding for Yokai 2p testrun
+      return nnpvResult.value * (game.currentPlayer == 1 ? 1 : -1);
     }
 
     List<int> validMoves = Vs[s]!;
@@ -165,14 +229,11 @@ class MCTSNNTree {
 
     var a = bestAction;
 
-    if (GamesSa.containsKey(SA(s, a))) {
-      game = GamesSa[SA(s, a)]!;
-    } else {
-      game = game.cloneAndApplyMove(a, null);
-      GamesSa[SA(s, a)] = game;
+    if (!GamesSa.containsKey(SA(s, a))) {
+      GamesSa[SA(s, a)] = game.cloneAndApplyMove(a, null);
     }
 
-    double v = search(game);
+    double v = search(GamesSa[SA(s, a)]!);
 
     if (Qsa.containsKey(SA(s, a))) {
       Qsa[SA(s, a)] =
@@ -184,6 +245,7 @@ class MCTSNNTree {
     }
 
     Ns[s] = (Ns[s] ?? 0) + 1;
-    return -v;
+    // FIXME - hardcoding for Yokai 2p testrun
+    return v * (game.currentPlayer == 0 ? 1 : -1);
   }
 }
