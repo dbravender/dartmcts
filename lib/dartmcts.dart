@@ -2,6 +2,7 @@ library dartmcts;
 
 import 'dart:math';
 
+
 int _id = 0;
 
 /// Used to get the next GameState ID
@@ -49,6 +50,8 @@ class Config<MoveType, PlayerType> {
   late Random random;
   bool backpropNNPVValue;
   bool immediateBackpropNNPVRewards;
+  bool determineEveryNode;
+  bool highestQValue;
 
   Config({
     double? c,
@@ -56,6 +59,8 @@ class Config<MoveType, PlayerType> {
     Random? random,
     this.backpropNNPVValue = true,
     this.immediateBackpropNNPVRewards = true,
+    this.determineEveryNode = false,
+    this.highestQValue = false,
   }) {
     this.random = random ?? Random();
     this.c = c ?? 1.41421356237; // square root of 2
@@ -239,6 +244,19 @@ class Node<MoveType, PlayerType> {
     }
   }
 
+  Node<MoveType, PlayerType?> getHighestQValueChild(
+      [List<MoveType>? actualMoves]) {
+    var currentChildren = children;
+    if (actualMoves != null) {
+      addNewChildrenForDetermination(actualMoves);
+      currentChildren = Map.fromEntries(
+          _children.entries.where((x) => actualMoves.contains(x.value.move)));
+    }
+    var sortedChildren = currentChildren.entries.toList();
+    sortedChildren.sort((b, a) => a.value.q.compareTo(b.value.q));
+    return sortedChildren.first.value;
+  }
+
   Node<MoveType, PlayerType?> getMostVisitedChild(
       [List<MoveType>? actualMoves]) {
     var currentChildren = children;
@@ -283,6 +301,8 @@ class MCTS<MoveType, PlayerType> {
     Random? random,
     bool backpropNNPVValue = true,
     bool immediateBackpropNNPVRewards = true,
+    bool determineEveryNode = false,
+    bool highestQValue = false,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
@@ -291,6 +311,8 @@ class MCTS<MoveType, PlayerType> {
       random: random,
       backpropNNPVValue: backpropNNPVValue,
       immediateBackpropNNPVRewards: immediateBackpropNNPVRewards,
+      determineEveryNode: determineEveryNode,
+      highestQValue: highestQValue,
     );
     if (rootNode == null) {
       rootNode = Node(
@@ -331,8 +353,10 @@ class MCTS<MoveType, PlayerType> {
       while (currentNode.children.length > 0 &&
           currentNode.gameState?.winner == null) {
         nodesVisited++;
-        currentNode = currentNode.getBestChild();
+        if (config.determineEveryNode) currentNode.determine();
         currentNode.resetState();
+        currentNode = currentNode.getBestChild();
+
         if (config.nnpv != null &&
             currentNode.parent?.currentPlayer() != null) {
           nnpvRewards[currentNode.parent!.currentPlayer()!] =
@@ -361,7 +385,12 @@ class MCTS<MoveType, PlayerType> {
       maxDepth = max(maxDepth, currentNode.depth);
     }
 
-    var selectedMove = rootNode.getMostVisitedChild(actualMoves).move;
+    MoveType? selectedMove;
+    if (config.highestQValue) {
+      selectedMove = rootNode.getHighestQValueChild(actualMoves).move;
+    } else {
+      selectedMove = rootNode.getMostVisitedChild(actualMoves).move;
+    }
     assert(actualMoves?.contains(selectedMove) != false);
     return MCTSResult(
         root: rootNode,

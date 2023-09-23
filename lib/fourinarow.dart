@@ -71,6 +71,9 @@ int findRowForColumn(Board board, int column) {
 }
 
 class ConnectFourGame implements GameState<Move, Player> {
+  @override
+  int actionSize = 0; // FIXME
+  int id = 0; // FIXME
   Random? random;
   Player? currentPlayer;
   Map<Player, int> bitboards;
