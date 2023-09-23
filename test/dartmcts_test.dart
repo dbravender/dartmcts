@@ -9,13 +9,20 @@ enum Player { FIRST, SECOND }
 enum Move { WIN }
 
 class GameWithOneMove implements GameState<Move, Player> {
+  @override
+  int id;
+  @override
+  int actionSize = 0; // No neural net for this game
   Random? random;
   Player? currentPlayer;
   Player? winner;
   Map<Player, int> scores = {};
 
-  GameWithOneMove(
-      {this.winner, required this.scores, this.currentPlayer = Player.FIRST});
+  GameWithOneMove({
+    this.winner,
+    required this.scores,
+    this.currentPlayer = Player.FIRST,
+  }) : id = getNextId();
 
   @override
   GameWithOneMove cloneAndApplyMove(Move move, Node<Move, Player>? root) {
@@ -49,6 +56,10 @@ class GameWithOneMove implements GameState<Move, Player> {
 enum ScoringMove { SCORE_5, SCORE_10, SCORE_100 }
 
 class GameWithScore implements GameState<ScoringMove, Player?> {
+  @override
+  int id;
+  @override
+  int actionSize = 0; // No neural net for this game
   Random? random;
   Player? currentPlayer = Player.FIRST;
   Map<Player?, int> scores = {Player.FIRST: 0, Player.SECOND: 0};
@@ -59,7 +70,8 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
       {this.winner,
       required this.scores,
       this.round = 0,
-      this.currentPlayer = Player.FIRST});
+      this.currentPlayer = Player.FIRST})
+      : id = getNextId();
 
   @override
   GameWithScore cloneAndApplyMove(

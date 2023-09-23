@@ -72,8 +72,9 @@ int findRowForColumn(Board board, int column) {
 
 class ConnectFourGame implements GameState<Move, Player> {
   @override
-  int actionSize = 0; // FIXME
-  int id = 0; // FIXME
+  int actionSize = 7;
+  @override
+  int id;
   Random? random;
   Player? currentPlayer;
   Map<Player, int> bitboards;
@@ -86,7 +87,8 @@ class ConnectFourGame implements GameState<Move, Player> {
       required this.board,
       required this.bitboards,
       required this.scores,
-      this.currentPlayer = Player.FIRST});
+      this.currentPlayer = Player.FIRST})
+      : id = getNextId();
 
   static ConnectFourGame newGame() {
     return ConnectFourGame(

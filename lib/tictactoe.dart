@@ -16,6 +16,10 @@ final List<List<int>> checks = [
 ];
 
 class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
+  @override
+  int id;
+  @override
+  int actionSize = 9;
   Random? random;
   List<TicTacToePlayer?> board = [];
   TicTacToePlayer? currentPlayer;
@@ -28,7 +32,8 @@ class TicTacToeGame implements GameState<int?, TicTacToePlayer> {
       {required this.board,
       required this.scores,
       this.currentPlayer,
-      this.winner});
+      this.winner})
+      : id = getNextId();
 
   static GameState<int?, TicTacToePlayer> newGame() {
     return TicTacToeGame(
