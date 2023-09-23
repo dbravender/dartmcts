@@ -50,7 +50,7 @@ class MCTSNNTree {
     this.random,
     this.cpuct = 1.0,
     this.tieTolerance = 1e-5,
-    this.EPS = 1e-8,
+    this.EPS = 1e-8, // Epsilon fix for new moves
   });
 
   int getBestMove(GameState<int, int> game) {
