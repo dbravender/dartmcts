@@ -2,7 +2,6 @@ library dartmcts;
 
 import 'dart:math';
 
-
 int _id = 0;
 
 /// Used to get the next GameState ID
@@ -52,6 +51,7 @@ class Config<MoveType, PlayerType> {
   bool immediateBackpropNNPVRewards;
   bool determineEveryNode;
   bool highestQValue;
+  bool useRewards;
 
   Config({
     double? c,
@@ -61,6 +61,7 @@ class Config<MoveType, PlayerType> {
     this.immediateBackpropNNPVRewards = true,
     this.determineEveryNode = false,
     this.highestQValue = false,
+    this.useRewards = true,
   }) {
     this.random = random ?? Random();
     this.c = c ?? 1.41421356237; // square root of 2
@@ -74,7 +75,7 @@ class Node<MoveType, PlayerType> {
   final MoveType? move;
   int visits;
   final int depth;
-  final Map<PlayerType, double> winsByPlayer = {};
+  final Map<PlayerType, double> rewardsByPlayer = {};
   int draws;
   final GameState? initialState;
   bool needStateReset = false;
@@ -82,6 +83,7 @@ class Node<MoveType, PlayerType> {
   NNPVResult<MoveType>? _nnpvResult;
   Config<MoveType, PlayerType> config;
   double q = 0;
+  bool useRewards;
 
   Node({
     this.gameState,
@@ -93,6 +95,7 @@ class Node<MoveType, PlayerType> {
     root,
     required this.config,
     this.q = 0,
+    this.useRewards = true,
   }) : initialState = gameState {
     this.root ??= this;
     gameState!.random = this.config.random;
@@ -144,7 +147,7 @@ class Node<MoveType, PlayerType> {
       return 0;
     }
     if (priorScore == 1.0) {
-      return ((winsByPlayer[player] ?? 0 + (draws * 0.5)) / visits) +
+      return ((rewardsByPlayer[player] ?? 0 + (draws * 0.5)) / visits) +
           (config.c * sqrt(log(parent!.visits.toDouble()) / visits));
     } else {
       // Q[s][a] + c_puct*P[s][a]*sqrt(sum(N[s]))/(1+N[s][a])
@@ -212,9 +215,18 @@ class Node<MoveType, PlayerType> {
         currentNode.draws += 1;
         reward = 0.5;
       } else {
-        currentNode.winsByPlayer
-            .update(winner, (value) => value + 1, ifAbsent: () => 1);
-        reward = currentNode.parent?.currentPlayer() == winner ? 1 : 0;
+        if (gameState is RewardProvider && config.useRewards) {
+          (gameState as RewardProvider)
+              .rewards()
+              .forEach((var player, var reward) {
+            rewardsByPlayer.update(player, (value) => value + reward,
+                ifAbsent: () => reward);
+          });
+        } else {
+          currentNode.rewardsByPlayer
+              .update(winner, (value) => value + 1, ifAbsent: () => 1);
+          reward = currentNode.parent?.currentPlayer() == winner ? 1 : 0;
+        }
       }
       // Q[s][a] = (N[s][a]*Q[s][a] + v)/(N[s][a]+1)
       currentNode.q = (currentNode.visits * currentNode.q + reward) /
@@ -229,7 +241,7 @@ class Node<MoveType, PlayerType> {
     while (currentNode != null) {
       rewards.forEach((player, reward) {
         if (player == currentNode?.parent?.currentPlayer()) {
-          currentNode?.winsByPlayer.update(player, (value) => value + reward,
+          currentNode?.rewardsByPlayer.update(player, (value) => value + reward,
               ifAbsent: () => reward);
         }
       });
@@ -303,6 +315,7 @@ class MCTS<MoveType, PlayerType> {
     bool immediateBackpropNNPVRewards = true,
     bool determineEveryNode = false,
     bool highestQValue = false,
+    bool useRewards = true,
   }) {
     var rootNode = initialRootNode;
     Config<MoveType, PlayerType> config = Config(
@@ -313,6 +326,7 @@ class MCTS<MoveType, PlayerType> {
       immediateBackpropNNPVRewards: immediateBackpropNNPVRewards,
       determineEveryNode: determineEveryNode,
       highestQValue: highestQValue,
+      useRewards: useRewards,
     );
     if (rootNode == null) {
       rootNode = Node(

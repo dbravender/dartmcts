@@ -55,14 +55,15 @@ class GameWithOneMove implements GameState<Move, Player> {
 
 enum ScoringMove { SCORE_5, SCORE_10, SCORE_100 }
 
-class GameWithScore implements GameState<ScoringMove, Player?> {
+class GameWithScore
+    implements RewardProvider<Player>, GameState<ScoringMove, Player?> {
   @override
   int id;
   @override
   int actionSize = 0; // No neural net for this game
   Random? random;
   Player? currentPlayer = Player.FIRST;
-  Map<Player?, int> scores = {Player.FIRST: 0, Player.SECOND: 0};
+  Map<Player, int> scores = {Player.FIRST: 0, Player.SECOND: 0};
   Player? winner;
   int round = 0;
 
@@ -134,6 +135,15 @@ class GameWithScore implements GameState<ScoringMove, Player?> {
   @override
   Map<String, dynamic> toJson() {
     throw UnimplementedError();
+  }
+
+  @override
+  Map<Player, double> rewards() {
+    var maxScore =
+        scores.values.reduce((max, current) => current > max ? current : max);
+    var normalizedScores = Map<Player, double>.from(scores);
+    normalizedScores.updateAll((_, x) => x / maxScore);
+    return normalizedScores;
   }
 }
 
@@ -213,6 +223,10 @@ void main() {
     var gameState = GameWithScore(scores: {Player.FIRST: 0, Player.SECOND: 0});
     MCTSResult<ScoringMove, Player?> result = MCTS(gameState: gameState)
         .getSimulationResult(iterations: 100, random: Random(123));
+    result.root!.children.forEach((key, value) {
+      print(key);
+      print(value.visits);
+    });
     expect(result.root!.children.length, equals(3));
     expect(result.move, equals(ScoringMove.SCORE_100));
     expect(result.root!.children[ScoringMove.SCORE_100]?.visits ?? 0,
